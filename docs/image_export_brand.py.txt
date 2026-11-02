@@ -1,0 +1,2014 @@
+"""Выгрузка расписания картинкой (PNG) в фирменном стиле заказчика.
+
+Картинка собирается по образцам заказчика: фирменная шапка (полосы фигур слева
+и справа одного размера, крупная надпись «РАСПИСАНИЕ», адрес цветом #BB914E,
+маскот справа) и таблица направлений, где каждая строка — программа, а кабинет
+выводится курсивом во ВТОРОЙ СТРОКЕ той же ячейки (в дни недели попадают только
+время и группа).
+
+Правила размещения маскота:
+* справа в шапке — всегда поза «Маскот0» (та, что на образце Ясной);
+* под таблицей — только в вертикальном формате, только если таблица короткая, и
+  только позы 1…9 (поза 0 «выглядывает из-за края» и снизу не используется);
+* в горизонтальном формате под таблицей не добавляется ничего.
+
+Столбец «ФИО преподавателя» выводится только когда направлений немного
+(см. TEACHER_COLUMN_MAX_PROGRAMS); при большом числе направлений строки идут
+просто по программам, без группировки по преподавателям.
+"""
+
+import os
+from collections import OrderedDict
+from datetime import datetime
+from io import BytesIO
+
+from django.contrib.staticfiles import finders
+from django.utils.translation import gettext_lazy as _
+from PIL import Image, ImageDraw, ImageFont
+
+from .absences import absence_captions_by_teacher
+from .models import Schedule
+
+# --------------------------------------------------------------------------
+# Фирменные цвета заказчика
+# --------------------------------------------------------------------------
+PROGRAM_COLORS = (
+    "#d2e4bc",  # зелёный
+    "#d2c1db",  # мягко-фиолетовый
+    "#e8e0ed",  # нежно-розовый
+    "#c8bd95",  # коричневый
+    "#a5dee9",  # голубой
+    "#ffc4ff",  # розовый
+)
+BRANCH_COLOR = "#BB914E"  # цвет адреса в шапке
+GRID_COLOR = "#000000"
+HEADER_FILL = "#D9D9D9"
+TEXT_COLOR = "#1F2328"
+MUTED_COLOR = "#3C4043"
+TITLE_COLOR = "#111111"
+
+#: Пометки, по которым занятие считается онлайн (ищем в названии кабинета).
+ONLINE_MARKS = ("онлайн", "online", "дистант", "zoom", "зум", "сетевая", "сетевой")
+
+#: Порог для столбца «ФИО преподавателя»: если направлений (программ) на адресе
+#: больше этого числа, столбец не выводится совсем. До 12 программ столбец
+#: помещается и читается (образец Опалихинской, там 5 программ). При большем
+#: числе направлений строк становится много, объединённая ячейка ФИО получается
+#: длинной и узкой — имя приходится дробить и мельчить; образец Ясной (там
+#: направлений очень много) идёт без этого столбца.
+TEACHER_COLUMN_MAX_PROGRAMS = 12
+
+# --------------------------------------------------------------------------
+# Статические ресурсы (картинки и шрифты лежат в journal/static/journal/...)
+# --------------------------------------------------------------------------
+SCHEDULE_STATIC_DIR = "journal/schedule"
+FONTS_STATIC_DIR = "journal/fonts"
+
+FONT_REGULAR = "Montserrat-Regular.ttf"
+FONT_BOLD = "Montserrat-ExtraBold.ttf"
+FONT_ITALIC = "Montserrat-Italic.ttf"
+FONT_FALLBACK_REGULAR = (
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "C:/Windows/Fonts/segoeui.ttf",
+    "C:/Windows/Fonts/arial.ttf",
+)
+FONT_FALLBACK_BOLD = (
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "C:/Windows/Fonts/segoeuib.ttf",
+    "C:/Windows/Fonts/arialbd.ttf",
+)
+
+ASSET_HEADER_MASCOT = "mascot-header.png"  # Маскот0 — поза сбоку справа в шапке
+ASSET_SHAPES_LEFT = "shapes-left.png"
+ASSET_SHAPES_RIGHT = "shapes-right.png"
+#: Позы для размещения под таблицей. Поза 0 (ASSET_HEADER_MASCOT) снизу не
+#: используется никогда: она «выглядывает» из-за края и годится только для шапки.
+ASSET_MASCOTS = (
+    "mascot1.png",
+    "mascot2.png",
+    "mascot3.png",
+    "mascot4.png",
+    "mascot5.png",
+    "mascot6.png",
+    "mascot7.png",
+    "mascot8.png",
+    "mascot9.png",
+)
+
+_font_cache = {}
+_asset_cache = {}
+
+#: Замечания вёрстки: текст, вышедший за границы своей ячейки. Используется
+#: проверками (см. layout_report); при обычной выгрузке список пуст.
+_layout_issues = []
+_measuring_draw = None
+
+
+def reset_layout_report():
+    """Очищает журнал проверок вёрстки."""
+    _layout_issues.clear()
+
+
+def layout_report():
+    """Список замечаний вёрстки (текст вне своей ячейки)."""
+    return list(_layout_issues)
+
+
+def _note_box_rect(label, text, font, rect, ink):
+    """Проверяет, что нарисованные чернила не вышли за прямоугольник ячейки."""
+    left, top, right, bottom = rect
+    ink_left, ink_top, ink_right, ink_bottom = ink
+    if (
+        ink_right > right + 1
+        or ink_bottom > bottom + 1
+        or ink_left < left - 1
+        or ink_top < top - 1
+    ):
+        _layout_issues.append(
+            {
+                "label": label,
+                "text": str(text)[:60],
+                "text_box": (
+                    round(ink_left),
+                    round(ink_top),
+                    round(ink_right - ink_left),
+                    round(ink_bottom - ink_top),
+                ),
+                "cell": tuple(round(value) for value in rect),
+            }
+        )
+
+
+def _note_box(label, text, font, rect, x, y):
+    """Запоминает, если текст вышел за пределы прямоугольника своей ячейки."""
+    global _measuring_draw
+    if _measuring_draw is None:
+        _measuring_draw = ImageDraw.Draw(Image.new("RGB", (10, 10), "white"))
+    width, height = _text_size(_measuring_draw, text, font)
+    left, top, right, bottom = rect
+    if x + width > right + 1 or y + height > bottom + 1 or x < left - 1 or y < top - 1:
+        _layout_issues.append(
+            {
+                "label": label,
+                "text": str(text)[:60],
+                "text_box": (round(x), round(y), round(width), round(height)),
+                "cell": tuple(round(value) for value in rect),
+            }
+        )
+
+# --------------------------------------------------------------------------
+# Геометрия. Размеры заданы для «эталонного» холста шириной 1080 px (как на
+# образце заказчика) и умножаются на scale.
+# --------------------------------------------------------------------------
+LAYOUTS = {
+    "vertical": {
+        "ref_width": 1080,
+        "scale": 1.55,
+        "min_height": 700,
+        "space_below": 620,
+        "bottom_mascot": True,
+    },
+    "horizontal": {
+        "ref_width": 1080,
+        "scale": 2.50,
+        "min_height": 620,
+        "space_below": 0,
+        "bottom_mascot": False,  # снизу в горизонтальном формате ничего не добавляем
+    },
+}
+
+#: Доли ширины таблицы: «Преподаватель» (если есть), «ДОП, № кабинета», дни.
+TEACHER_PART = 0.180
+ROOM_PART = 0.320
+DAY_PART = 0.083  # (1 - 0.180 - 0.320) / 6
+
+#: Сколько строк отводим под ФИО преподавателя в горизонтали: 2 — чтобы строки
+#: таблицы оставались невысокими; в вертикали допускаем 3 вертикальные строки.
+TEACHER_NAME_LINES_HORIZONTAL = 2
+
+#: Высота шапки в эталонных пикселях (фигуры + надпись + адрес + маскот).
+HEADER_REF_HEIGHT = 140
+#: Отступ между надписью «РАСПИСАНИЕ» и адресом (в эталонных пикселях).
+HEADER_TITLE_GAP = 16
+#: Высота строки заголовков таблицы: в ней вертикальные подписи столбцов.
+HEAD_ROW_REF_HEIGHT = 100
+
+
+def _rgb(color):
+    value = color.lstrip("#")
+    return tuple(int(value[index : index + 2], 16) for index in (0, 2, 4))
+
+
+# --------------------------------------------------------------------------
+# Помощники: статика, шрифты, картинки
+# --------------------------------------------------------------------------
+def _static_path(relative_path):
+    """Абсолютный путь к статике через finders (без URL и без сети)."""
+    return finders.find(relative_path)
+
+
+def _brand_font_path(name):
+    """Путь к шрифту Montserrat; если его нет — запасной системный шрифт."""
+    found = _static_path(f"{FONTS_STATIC_DIR}/{name}")
+    if found:
+        return found
+    if "Italic" in name:
+        return None
+    fallback = (
+        FONT_FALLBACK_BOLD
+        if ("Bold" in name or "ExtraBold" in name)
+        else FONT_FALLBACK_REGULAR
+    )
+    for path in fallback:
+        try:
+            ImageFont.truetype(path, 12)
+        except OSError:
+            continue
+        return path
+    return None
+
+
+def _brand_font(size, bold=False, italic=False):
+    """Шрифт фирменного начертания нужного размера (с кэшем)."""
+    size = max(int(size), 8)
+    key = (bold, italic, size)
+    if key in _font_cache:
+        return _font_cache[key]
+    names = []
+    if italic:
+        names.append(FONT_ITALIC)
+    names.append(FONT_BOLD if bold else FONT_REGULAR)
+    font = None
+    for name in names:
+        path = _brand_font_path(name)
+        if not path:
+            continue
+        try:
+            font = ImageFont.truetype(path, size)
+            break
+        except OSError:
+            continue
+    if font is None:
+        for path in FONT_FALLBACK_BOLD if bold else FONT_FALLBACK_REGULAR:
+            try:
+                font = ImageFont.truetype(path, size)
+                break
+            except OSError:
+                continue
+    if font is None:
+        font = ImageFont.load_default()
+    _font_cache[key] = font
+    return font
+
+
+def _trim_alpha(image):
+    """Обрезает прозрачные поля картинки, чтобы отступы были предсказуемыми."""
+    if image.mode != "RGBA":
+        return image
+    box = image.split()[3].getbbox()
+    if box:
+        return image.crop(box)
+    return image
+
+
+def _asset(name):
+    """Картинка из journal/static/journal/schedule (RGBA, обрезанная). С кэшем."""
+    if name in _asset_cache:
+        return _asset_cache[name]
+    path = _static_path(f"{SCHEDULE_STATIC_DIR}/{name}")
+    if not path:
+        _asset_cache[name] = None
+        return None
+    try:
+        with Image.open(path) as opened:
+            image = _trim_alpha(opened.convert("RGBA"))
+    except (OSError, ValueError):
+        _asset_cache[name] = None
+        return None
+    _asset_cache[name] = image
+    return image
+
+
+def _scaled_asset(name, max_width, max_height, allow_upscale=False):
+    """Картинка, вписанная в прямоугольник с сохранением пропорций."""
+    image = _asset(name)
+    if image is None or max_width <= 0 or max_height <= 0:
+        return None
+    width, height = image.size
+    if width <= 0 or height <= 0:
+        return None
+    factor = min(max_width / width, max_height / height)
+    if not allow_upscale:
+        factor = min(factor, 1.0)
+    size = (max(int(width * factor), 1), max(int(height * factor), 1))
+    if size == image.size:
+        return image
+    return image.resize(size, Image.LANCZOS)
+
+
+def _shape_components(image, threshold=60, min_pixels=200):
+    """Связные непрозрачные области картинки — отдельные фигуры полосы."""
+    width, height = image.size
+    alpha = image.split()[3].load()
+    seen = [[False] * width for _ in range(height)]
+    boxes = []
+    for start_y in range(height):
+        for start_x in range(width):
+            if seen[start_y][start_x] or alpha[start_x, start_y] <= threshold:
+                continue
+            stack = [(start_x, start_y)]
+            seen[start_y][start_x] = True
+            min_x = max_x = start_x
+            min_y = max_y = start_y
+            count = 0
+            while stack:
+                x, y = stack.pop()
+                count += 1
+                min_x, max_x = min(min_x, x), max(max_x, x)
+                min_y, max_y = min(min_y, y), max(max_y, y)
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if (
+                        0 <= nx < width
+                        and 0 <= ny < height
+                        and not seen[ny][nx]
+                        and alpha[nx, ny] > threshold
+                    ):
+                        seen[ny][nx] = True
+                        stack.append((nx, ny))
+            if count > min_pixels:
+                boxes.append((min_x, min_y, max_x, max_y, max_x - min_x + 1, max_y - min_y + 1))
+    return boxes
+
+
+def _reference_shape_size(image, colour, tolerance=40):
+    """Габариты эталонной фигуры (по её цвету) на исходной полосе.
+
+    Например, синий шестиугольник: он есть на обеих полосах и одинаково
+    выглядит в исходниках, поэтому по нему удобно считать масштаб.
+    """
+    width, height = image.size
+    pixels = image.load()
+    seen = [[False] * width for _ in range(height)]
+
+    def matches(pixel):
+        return (
+            pixel[3] > 60
+            and abs(pixel[0] - colour[0]) <= tolerance
+            and abs(pixel[1] - colour[1]) <= tolerance
+            and abs(pixel[2] - colour[2]) <= tolerance
+        )
+
+    best = None
+    for start_y in range(height):
+        for start_x in range(width):
+            if seen[start_y][start_x] or not matches(pixels[start_x, start_y]):
+                continue
+            stack = [(start_x, start_y)]
+            seen[start_y][start_x] = True
+            min_x = max_x = start_x
+            min_y = max_y = start_y
+            count = 0
+            while stack:
+                x, y = stack.pop()
+                count += 1
+                min_x, max_x = min(min_x, x), max(max_x, x)
+                min_y, max_y = min(min_y, y), max(max_y, y)
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if (
+                        0 <= nx < width
+                        and 0 <= ny < height
+                        and not seen[ny][nx]
+                        and matches(pixels[nx, ny])
+                    ):
+                        seen[ny][nx] = True
+                        stack.append((nx, ny))
+            if count > 100 and (best is None or count > best[6]):
+                best = (min_x, min_y, max_x, max_y, max_x - min_x + 1, max_y - min_y + 1, count)
+    if best is None:
+        return 0, 0
+    return best[4], best[5]
+
+
+#: Насыщенный синий цвет шестиугольника на фирменных полосах.
+REFERENCE_SHAPE_COLOUR = (63, 113, 201)
+#: Целевая высота эталонной фигуры (шестиугольника) в ЭТАЛОННЫХ пикселях.
+SHAPE_TARGET_REF = {"vertical": 39, "horizontal": 40}
+
+
+def _header_shape_height(image):
+    """Высота эталонной фигуры (шестиугольника) на исходной полосе."""
+    _width, height = _reference_shape_size(image, REFERENCE_SHAPE_COLOUR)
+    if height:
+        return height
+    heights = sorted(box[5] for box in _shape_components(image))
+    if not heights:
+        return 0
+    top = heights[-3:]
+    return sum(top) / len(top)
+
+
+def _scaled_asset_image(image, max_width, max_height):
+    """Вписывает уже загруженную картинку в прямоугольник."""
+    if image is None or max_width <= 0 or max_height <= 0:
+        return image
+    factor = min(max_width / image.size[0], max_height / image.size[1])
+    size = (max(int(image.size[0] * factor), 1), max(int(image.size[1] * factor), 1))
+    return image if size == image.size else image.resize(size, Image.LANCZOS)
+
+
+def _resize_to_height(image, height):
+    """Масштабирует картинку до заданной высоты с сохранением пропорций."""
+    if image is None or height <= 0 or image.size[1] == height:
+        return image
+    width = max(int(image.size[0] * height / image.size[1]), 1)
+    return image.resize((width, height), Image.LANCZOS)
+
+
+# --------------------------------------------------------------------------
+# Помощники: текст
+# --------------------------------------------------------------------------
+def _text_width(draw, text, font):
+    return draw.textlength(str(text), font=font)
+
+
+def _text_size(draw, text, font):
+    """Ширина и высота строки (без пустых полей сверху и снизу)."""
+    box = draw.textbbox((0, 0), str(text), font=font)
+    return box[2] - box[0], box[3] - box[1]
+
+
+def _split_word(draw, word, font, max_width):
+    """Режет слишком длинное слово: сначала по дефису, потом по буквам."""
+    cut = len(word)
+    while cut > 1 and _text_width(draw, word[:cut], font) > max_width:
+        cut -= 1
+    if cut < len(word):
+        for separator in ("-", "/", "\u00b7", ",", "."):
+            position = word.rfind(separator, 0, cut + 1)
+            if position > 0 and _text_width(draw, word[: position + 1], font) <= max_width:
+                return word[: position + 1], word[position + 1 :]
+    return word[:cut], word[cut:]
+
+
+def _wrap_text(draw, text, font, max_width):
+    """Переносит текст по словам; слишком длинное слово режется по дефису/буквам."""
+    text = str(text).strip()
+    if not text:
+        return []
+    max_width = max(max_width, 10)
+    lines = []
+    for paragraph in text.split("\n"):
+        current = ""
+        for word in paragraph.split():
+            while _text_width(draw, word, font) > max_width and len(word) > 1:
+                head, tail = _split_word(draw, word, font, max_width)
+                if not tail or not head:
+                    break
+                if current:
+                    lines.append(current)
+                    current = ""
+                lines.append(head)
+                word = tail
+            if not current:
+                current = word
+            elif _text_width(draw, f"{current} {word}", font) <= max_width:
+                current = f"{current} {word}"
+            else:
+                lines.append(current)
+                current = word
+        lines.append(current)
+    return [line for line in lines if line] or [""]
+
+
+def _wrap_by_words(draw, text, font, max_width):
+    """Переносит ФИО по целым словам (фамилия, имя, отчество — каждая строка)."""
+    lines = []
+    current = ""
+    for word in str(text).split():
+        candidate = f"{current} {word}".strip()
+        if current and _text_width(draw, candidate, font) > max_width:
+            lines.append(current)
+            current = word
+            continue
+        current = candidate
+    if current:
+        lines.append(current)
+    return lines or [str(text)]
+
+
+def _fit_wrapped(draw, text, max_width, base, minimum, bold=False, italic=False):
+    """Подбирает шрифт и переносы так, чтобы любой перенос влез в ширину."""
+    size = max(int(base), int(minimum))
+    while size > minimum:
+        font = _brand_font(size, bold=bold, italic=italic)
+        lines = _wrap_text(draw, text, font, max_width)
+        if all(_text_width(draw, line, font) <= max_width for line in lines):
+            return font, lines
+        size -= 1
+    font = _brand_font(minimum, bold=bold, italic=italic)
+    return font, _wrap_text(draw, text, font, max_width)
+
+
+def _fit_single_line(draw, text, max_width, max_size, minimum, bold=False):
+    """Шрифт, при котором строка гарантированно влезает в одну строку."""
+    size = max(int(max_size), int(minimum))
+    while size > minimum:
+        font = _brand_font(size, bold=bold)
+        if _text_width(draw, text, font) <= max_width:
+            return font
+        size -= 1
+    return _brand_font(minimum, bold=bold)
+
+
+def _block_size(draw, lines, font, line_gap):
+    """Ширина и высота блока строк без пустых полей сверху и снизу."""
+    widths = [_text_size(draw, line, font)[0] for line in lines]
+    heights = [_text_size(draw, line, font)[1] for line in lines]
+    return (
+        max(widths) if widths else 0,
+        sum(heights) + line_gap * max(len(heights) - 1, 0),
+    )
+
+
+def _line_height(draw, text, font, scale):
+    """Высота строки с межстрочным интервалом."""
+    return _text_size(draw, text, font)[1] + max(int(2.2 * scale), 1)
+
+
+def _rotated_ink(draw, text, font):
+    """Габариты текста, повёрнутого на 90° (ширина — по вертикали)."""
+    width, height = _text_size(draw, text, font)
+    return height, width
+
+
+def _draw_rotated(draw, center, text, font, fill, on_draw=None):
+    """Вертикальная подпись (буквы читаются снизу вверх), центр — center.
+
+    on_draw — само изображение: тогда подпись вставляется через paste с маской.
+    Возвращает прямоугольник реально нарисованных чернил, чтобы вызывающий код
+    мог проверить его положение детектором переполнения.
+    """
+    text = str(text)
+    box = draw.textbbox((0, 0), text, font=font)
+    mask = Image.new("L", (box[2] - box[0] + 8, box[3] - box[1] + 8), 0)
+    ImageDraw.Draw(mask).text((-box[0] + 4, -box[1] + 4), text, font=font, fill=255)
+    rotated = mask.rotate(90, expand=True)
+    paste_x = int(round(center[0] - rotated.size[0] / 2))
+    paste_y = int(round(center[1] - rotated.size[1] / 2))
+    if on_draw is not None:
+        on_draw.paste(fill, (paste_x, paste_y), rotated)
+    else:
+        draw.bitmap((paste_x, paste_y), rotated, fill=fill)
+    return (paste_x, paste_y, paste_x + rotated.size[0], paste_y + rotated.size[1])
+
+
+def _rotated_layout(draw, text, font, max_span):
+    """Разбивает подпись на вертикальные полосы и считает их шаг и высоту."""
+    text = str(text).strip()
+    if not text:
+        return [], 0, 0
+    text_box = draw.textbbox((0, 0), text, font=font)
+    step = (text_box[3] - text_box[1]) + max(int(font.size * 0.25), 2)
+    parts = []
+    current = ""
+    for word in text.split():
+        candidate = f"{current} {word}".strip()
+        if current and _text_width(draw, candidate, font) > max_span:
+            parts.append(current)
+            current = word
+            continue
+        current = candidate
+    if current:
+        parts.append(current)
+    return parts or [text], step, text_box[3] - text_box[1]
+
+
+def _draw_rotated_multiline(draw, center, parts, step, text_height, font, fill):
+    """Рисует вертикальные полосы подписи, отцентрованные по center."""
+    total = step * len(parts)
+    top = center[1] - total / 2 + text_height / 2
+    for index, part in enumerate(parts):
+        _draw_rotated(draw, (center[0], top + index * step), part, font, fill)
+
+
+def _is_online(room_name):
+    lowered = str(room_name).lower()
+    return any(mark in lowered for mark in ONLINE_MARKS)
+
+
+# --------------------------------------------------------------------------
+# Сбор данных
+# --------------------------------------------------------------------------
+def collect_lessons(term, branch):
+    """Занятия адреса за полугодие, сгруппированные по преподавателю и программе.
+
+    Возвращает (список преподавателей, индекс программы → её место в стабильном
+    порядке). У преподавателя лежат его программы, у программы — ячейки по дням.
+
+    У преподавателя с отсутствием в полугодии к программе добавляется подпись
+    ``absence`` («отсутствует: Больничный 13.01–17.01»). В недельной сетке
+    конкретной даты у обычного занятия нет, поэтому это именно пометка, а не
+    отмена занятия.
+    """
+    lessons = list(
+        Schedule.objects.filter(group__term=term, branch=branch)
+        .select_related("group__subject", "teacher", "room")
+        .order_by("day_of_week", "start_time", "group__name")
+    )
+    # Отсутствия всех преподавателей выгрузки берём одним запросом и только те,
+    # что пересекаются с полугодием. Подпись собирается заранее: ленивые строки
+    # перевода нужно привести к str() до отрисовки.
+    absence_labels = absence_captions_by_teacher(
+        {lesson.teacher_id for lesson in lessons},
+        getattr(term, "start_date", None),
+        getattr(term, "end_date", None),
+        compact=True,
+    )
+
+    teachers = OrderedDict()
+    subject_order = []
+    for lesson in lessons:
+        subject = lesson.group.subject
+        if subject.pk not in subject_order:
+            subject_order.append(subject.pk)
+
+        teacher = teachers.get(lesson.teacher_id)
+        if teacher is None:
+            teacher = teachers[lesson.teacher_id] = {
+                "name": lesson.teacher.full_name if lesson.teacher else "",
+                "programs": OrderedDict(),
+            }
+
+        program = teacher["programs"].get(subject.pk)
+        if program is None:
+            caption = absence_labels.get(lesson.teacher_id)
+            program = teacher["programs"][subject.pk] = {
+                "subject": subject.name,
+                "rooms": [],
+                # Пометка отсутствия преподавателя: у недельной сетки даты нет,
+                # поэтому это подпись под названием программы.
+                "absence": str(
+                    _("отсутствует: %(caption)s") % {"caption": caption}
+                )
+                if caption
+                else "",
+                "cells": OrderedDict((value, []) for value, _ in Schedule.Weekday.choices),
+            }
+
+        room_name = lesson.room.name if lesson.room else ""
+        if room_name and room_name not in program["rooms"]:
+            program["rooms"].append(room_name)
+
+        name = lesson.group.name
+        if lesson.lesson_date is not None:
+            name = _("%(name)s (разовое %(date)s)") % {
+                "name": name,
+                "date": f"{lesson.lesson_date:%d.%m.%Y}",
+            }
+        program["cells"][lesson.day_of_week].append(
+            {
+                "group": name,
+                "time": lesson.time_range,
+                "online": _is_online(room_name),
+            }
+        )
+
+    subject_index = {pk: index for index, pk in enumerate(subject_order)}
+    return list(teachers.values()), subject_index
+
+
+def cabinet_caption(rooms):
+    """Подпись кабинета под названием программы (вариант заказчика).
+
+    Если кабинет задан номером, печатаем «каб. 13»; если названием — как есть.
+    """
+    if not rooms:
+        return ""
+    parts = []
+    for room in rooms:
+        room = str(room).strip()
+        if not room:
+            continue
+        parts.append(f"{_('каб.')} {room}" if room.replace(" ", "").isdigit() else room)
+    return ", ".join(parts)
+
+
+def limit_of(column_width):
+    """Ширина текста внутри столбца ФИО."""
+    return int(column_width) - 12
+
+MIN_TEACHER_FONT = 8
+VERTICAL_NAME_FONT = 11
+
+
+def _max_strip_ink(draw, strips, font):
+    """Максимальный вертикальный габарит строки после поворота на 90°."""
+    return max(max(_text_size(draw, strip, font)) for strip in strips)
+
+
+def _teacher_block_layout(draw, name, orientation, font, column_width, available_height):
+    """Раскладка ФИО для заданного кегля; None, если блок не влезает в ячейку."""
+    limit_width = max(int(column_width) - 12, 20)
+    if orientation == "horizontal":
+        lines = _wrap_by_words(draw, name, font, limit_width)
+        if any(_text_width(draw, line, font) > limit_width for line in lines):
+            return None
+        heights = [_text_size(draw, line, font)[1] for line in lines]
+        total = sum(heights) + max(int(2), 2) * max(len(lines) - 1, 0)
+        if total > available_height:
+            return None
+        return {"mode": "horizontal", "font": font, "lines": lines, "height": total}
+    words = [word for word in str(name).split() if word]
+    if not words:
+        return None
+    strips, step, height = _vertical_layout(
+        draw, words, font, column_width, available_height
+    )
+    if height > available_height:
+        return None
+    ink_horizontal = _max_strip_ink(draw, strips, font)
+    return {
+        "mode": "vertical",
+        "font": font,
+        "parts": strips,
+        # Шаг строк равен габариту строки: строки не налезают друг на друга.
+        "step": step,
+        "text_height": ink_horizontal,
+        "height": height,
+    }
+
+
+def _strip_text(draw, text, font, allowed):
+    """Режет строку на куски шириной не больше allowed (по буквам)."""
+    pieces = []
+    remaining = text
+    while remaining:
+        cut = len(remaining)
+        while cut > 1 and _text_size(draw, remaining[:cut], font)[0] > allowed:
+            cut -= 1
+        pieces.append(remaining[:cut])
+        remaining = remaining[cut:]
+    return pieces
+
+
+def _pack_strips(draw, words, font, width_cap):
+    """Раскладывает ФИО в вертикальные строки шириной не больше width_cap."""
+    cap = max(int(width_cap), int(font.size * 1.6))
+    strips = []
+    for word in words:
+        width = _text_size(draw, word, font)[0]
+        if width <= cap:
+            strips.append(word)
+            continue
+        pieces = _strip_text(draw, word, font, cap)
+        if len(pieces) > 1 and _text_size(draw, pieces[-1], font)[0] < cap * 0.4:
+            # Хвостик приклеиваем к предыдущему куску — так строка читается лучше.
+            pieces[-2] = pieces[-2] + pieces[-1]
+            pieces.pop()
+        strips.extend(pieces)
+    return strips
+
+
+def _vertical_layout(draw, words, font, column_width, available_height):
+    """Минимально возможная раскладка ФИО: строки, шаг и высота блока.
+
+    Ищем шаг от самого крупного к мелкому: чем мельче шаг, тем на более мелкие
+    куски режутся длинные слова. Так находится самая читаемая раскладка, которая
+    целиком укладывается в объединённую ячейку.
+    """
+    limit_width = max(int(column_width) - 12, 20)
+    longest_word = max((_text_size(draw, word, font)[0] for word in words), default=0)
+    # Верхняя граница длины строки: и ширина столбца, и высота ячейки, делённая
+    # между словами (по вертикали длина строки идёт вдоль шага).
+    height_cap = int(available_height / max(len(words), 1)) - 2
+    smallest = max(int(font.size * 1.6), 2)
+    best = None
+    div = 1
+    while div <= 32:
+        cap = int(longest_word / div)
+        if cap < smallest:
+            cap = smallest
+        if cap > limit_width:
+            cap = limit_width
+        if cap > height_cap:
+            cap = height_cap
+        if cap < smallest:
+            cap = smallest
+        strips = _pack_strips(draw, words, font, cap)
+        step = max(_max_strip_ink(draw, strips, font) + 1, 1)
+        height = step * len(strips)
+        if height <= available_height:
+            return strips, step, height
+        if best is None or height < best[2]:
+            best = (strips, step, height)
+        if cap <= smallest:
+            break
+        div += 1
+    cap = max(limit_width, int(font.size))
+    strips = _pack_strips(draw, words, font, cap)
+    step = max(_max_strip_ink(draw, strips, font) + 1, 1)
+    if step * len(strips) <= available_height or best is None:
+        return strips, step, step * len(strips)
+    return best
+
+
+def _teacher_required_height(draw, name, orientation, font, column_width):
+    """Высота объединённой ячейки, нужная ФИО при данном кегле.
+
+    Для вертикали нужна высота под цельные вертикальные строки: шаг равен длине
+    самого длинного слова, а строк столько же, сколько слов в ФИО.
+    """
+    words = [word for word in str(name).split() if word]
+    if not words:
+        return 0
+    if orientation == "horizontal":
+        lines = _wrap_by_words(draw, name, font, max(limit_of(column_width), 20))
+        heights = [_text_size(draw, line, font)[1] for line in lines]
+        return sum(heights) + max(int(2), 2) * max(len(lines) - 1, 0)
+    longest = max(_text_size(draw, word, font)[0] for word in words)
+    _strips, step, height = _vertical_layout(draw, words, font, column_width, 1 << 20)
+    return max(longest + 2, height, step)
+
+
+def _fit_teacher_layout(
+    draw, name, orientation, base_size, column_width, available_height
+):
+    """Наибольший кегль, при котором ФИО целиком влезает в объединённую ячейку.
+
+    Кегль уменьшается, пока блок (все слова по ширине и высоте) не уложится;
+    ничего не обрезается и не выходит за границы ячейки.
+    """
+    size = max(int(base_size), MIN_TEACHER_FONT)
+    while size > MIN_TEACHER_FONT:
+        layout = _teacher_block_layout(
+            draw,
+            name,
+            orientation,
+            _brand_font(size, bold=True),
+            column_width,
+            available_height,
+        )
+        if layout is not None:
+            return layout
+        size -= 1
+    layout = _teacher_block_layout(
+        draw,
+        name,
+        orientation,
+        _brand_font(MIN_TEACHER_FONT, bold=True),
+        column_width,
+        available_height,
+    )
+    if layout is not None:
+        return layout
+    # Крайний случай: минимальным кеглем блок не влезает — режем слова мельче.
+    font = _brand_font(MIN_TEACHER_FONT, bold=True)
+    if orientation == "horizontal":
+        lines = _wrap_by_words(draw, name, font, max(limit_of(column_width), 20))
+        heights = [_text_size(draw, line, font)[1] + 2 for line in lines]
+        while len(lines) > 1 and sum(heights) > available_height:
+            lines = lines[:-1]
+            heights = [_text_size(draw, line, font)[1] + 2 for line in lines]
+        return {
+            "mode": "horizontal",
+            "font": font,
+            "lines": lines,
+            "height": sum(heights),
+        }
+    words = [word for word in str(name).split() if word]
+    if not words:
+        return {
+            "mode": "vertical",
+            "font": font,
+            "parts": [],
+            "step": 1,
+            "text_height": 1,
+            "height": 0,
+        }
+    # Минимальным кеглем блок не влезает: режем слова на самые мелкие строки,
+    # какие ещё влезают в ячейку (по одной букве), но за границы не выходим.
+    strips, step, height = _vertical_layout(
+        draw, words, font, column_width, available_height
+    )
+    if height > available_height:
+        strips = _pack_strips(draw, words, font, max(int(font.size * 0.9), 2))
+        step = max(_max_strip_ink(draw, strips, font) + 1, 1)
+    return {
+        "mode": "vertical",
+        "font": font,
+        "parts": strips,
+        "step": step,
+        "text_height": max(_max_strip_ink(draw, strips, font), 1),
+        "height": step * len(strips),
+    }
+
+
+def _cell_blocks(entries):
+    """Склеивает занятия одной ячейки по времени: время + список групп."""
+    blocks = []
+    for entry in entries:
+        key = str(entry["time"])
+        if blocks and blocks[-1]["key"] == key:
+            blocks[-1]["groups"].append(entry)
+            blocks[-1]["online"] = blocks[-1]["online"] or entry["online"]
+            continue
+        blocks.append(
+            {"key": key, "time": key, "groups": [entry], "online": entry["online"]}
+        )
+    return blocks
+
+
+# --------------------------------------------------------------------------
+# Шапка
+# --------------------------------------------------------------------------
+def _draw_header(image, draw, context, width, box, table_right):
+    """Фирменная шапка: фигуры одного размера слева и справа, маскот справа.
+
+    Правый край маскота стоит вровень с правой границей таблицы (table_right),
+    правая полоса фигур сдвигается левее маскота, чтобы не налезать на него.
+    """
+    scale = context["scale"]
+    left, top, right, bottom = box
+    available = bottom - top
+    pad = int(18 * scale)
+
+    # Пункт 1: маскот заметно крупнее (был 46 % высоты шапки, стал 68 %).
+    mascot = _resize_to_height(
+        _scaled_asset(ASSET_HEADER_MASCOT, width * 0.26, available, allow_upscale=True),
+        int(available * 0.68),
+    )
+    left_strip, right_strip = _header_strips(
+        context, width, available, context.get("orientation", "vertical")
+    )
+    strip_height = max(
+        left_strip.size[1] if left_strip else 0,
+        right_strip.size[1] if right_strip else 0,
+    )
+
+    strip_y = top + int((available - strip_height) / 2)
+    if left_strip is not None:
+        image.paste(left_strip, (left + pad, strip_y), left_strip)
+
+    # Правый край маскота — ровно на правой границе таблицы (учитываем прозрачные
+    # поля картинки, чтобы совпадал именно видимый край).
+    mascot_left = table_right
+    if mascot is not None:
+        mascot_box = mascot.getbbox() or (0, 0, mascot.size[0], mascot.size[1])
+        mascot_left = table_right - mascot_box[2]
+        mascot_y = top + int((available - mascot.size[1]) / 2)
+        if mascot_y + mascot.size[1] > bottom:
+            mascot_y = max(bottom - mascot.size[1], top)
+        image.paste(mascot, (mascot_left, mascot_y), mascot)
+
+    free_left = left + pad + (left_strip.size[0] if left_strip else 0)
+    free_right = mascot_left
+    if right_strip is not None:
+        # Полоса справа не должна налезать на маскота.
+        strip_x = mascot_left - int(10 * scale) - right_strip.size[0]
+        if strip_x < free_left + pad:
+            strip_x = free_left + pad
+        image.paste(right_strip, (strip_x, strip_y), right_strip)
+        # Свободный коридор для надписи кончается там, где начинается полоса.
+        free_right = min(free_right, strip_x)
+
+    free_width = max(free_right - free_left - pad, width * 0.16)
+
+    title = context["title"]
+    address = context["address"]
+    # Пункт 2: надпись и адрес разводим заметным отступом, чтобы не сливались.
+    gap = int(HEADER_TITLE_GAP * scale)
+    line_gap = int(2 * scale)
+    address_font, address_lines = _fit_wrapped(
+        draw, address, free_width, context["address_size"], context["address_min"], bold=True
+    )
+    address_width, address_height = _block_size(draw, address_lines, address_font, line_gap)
+    available_title_height = available - address_height - gap - int(8 * scale)
+    title_size = min(
+        context["title_size"], max(int(available_title_height * 1.15), context["title_min"])
+    )
+    title_font = _fit_single_line(
+        draw, title, free_width, title_size, context["title_min"], bold=True
+    )
+    title_width, title_height = _block_size(draw, [title], title_font, 0)
+
+    block_height = title_height + gap + address_height
+    text_top = top + max(int((available - block_height) / 2), 0)
+    center = (free_left + free_right) / 2
+    draw.text(
+        (center - title_width / 2, text_top), title, font=title_font, fill=TITLE_COLOR
+    )
+    text_y = text_top + title_height + gap
+    for line in address_lines:
+        line_height = _text_size(draw, line, address_font)[1]
+        draw.text(
+            (center - _text_width(draw, line, address_font) / 2, text_y),
+            line,
+            font=address_font,
+            fill=BRANCH_COLOR,
+        )
+        text_y += line_height + line_gap
+
+
+def _header_strips(context, width, available, orientation="vertical"):
+    """Полосы фигур: эталонная фигура (шестиугольник) одного размера слева и справа.
+
+    В исходных картинках фигуры уже одного размера, поэтому к обеим полосам
+    применяется ОДИН И ТОТ ЖЕ коэффициент: он считается от высоты эталонной
+    фигуры на полосе и её целевой высоты на холсте.
+    """
+    left_asset = _asset(ASSET_SHAPES_LEFT)
+    right_asset = _asset(ASSET_SHAPES_RIGHT)
+    left_natural = _header_shape_height(left_asset) or 1
+    right_natural = _header_shape_height(right_asset) or left_natural
+    # Общая «эталонная» высота фигуры — максимум из полос (фигуры одного размера).
+    natural = max(left_natural, right_natural)
+    target = SHAPE_TARGET_REF.get(orientation, SHAPE_TARGET_REF["vertical"]) * float(
+        context["scale"]
+    )
+    target = max(target, 8)
+    # Один коэффициент для обеих полос; ограничен только размерами холста.
+    limit = min(
+        width * 0.26 / left_asset.size[0] if left_asset else 1.0,
+        width * 0.26 / right_asset.size[0] if right_asset else 1.0,
+        available / left_asset.size[1] if left_asset else 1.0,
+        available / right_asset.size[1] if right_asset else 1.0,
+    )
+    factor = min(target / natural, limit)
+
+    def scaled(image):
+        if image is None:
+            return None
+        size = (max(int(image.size[0] * factor), 1), max(int(image.size[1] * factor), 1))
+        return image if size == image.size else image.resize(size, Image.LANCZOS)
+
+    return scaled(left_asset), scaled(right_asset)
+
+
+# --------------------------------------------------------------------------
+# Таблица
+# --------------------------------------------------------------------------
+def _table_columns(table_width, teacher_column, teacher_width=None):
+    """Ширины колонок: ФИО (если есть), «ДОП, № кабинета», шесть дней недели.
+
+    teacher_width можно задать явно — тогда столбец ФИО получает ровно столько
+    места, сколько нужно самому длинному слову (фамилии, имени, отчеству).
+    """
+    if teacher_column:
+        if teacher_width is None:
+            teacher_width = int(table_width * TEACHER_PART)
+        scale_factor = 1.0
+    else:
+        teacher_width = 0
+        # Без столбца ФИО его долю делят «ДОП, № кабинета» и дни недели.
+        scale_factor = 1.0 / (1.0 - TEACHER_PART)
+    room_width = int(table_width * ROOM_PART * scale_factor)
+    day_width = int((table_width - teacher_width - room_width) / 6)
+    remainder = table_width - (teacher_width + room_width + day_width * 6)
+    # Остаток отдаём «ДОП, № кабинета», чтобы таблица дошла до правого края.
+    room_width += remainder
+    return {
+        "teacher_width": teacher_width,
+        "room_width": room_width,
+        "day_width": day_width,
+    }
+
+
+def _build_head(draw, columns, labels, font_head, scale, orientation="vertical"):
+    """Раскладка шапки таблицы: строка-баннер и одна строка заголовков.
+
+    «ДОП, № кабинета» пишется горизонтально, дни недели — вертикально (иначе
+    они не помещаются в узких колонках). Высота строки считается по фактическому
+    тексту, поэтому ничего не обрезается.
+    """
+    pad = int(6 * scale)
+    line_gap = max(int(2 * scale), 2)
+    left = columns["left"]
+    table_width = columns["table_width"]
+    teacher_column = columns["teacher_column"]
+    teacher_width = columns["teacher_width"]
+    room_width = columns["room_width"]
+    day_width = columns["day_width"]
+    day_left = columns["day_left"]
+    horizontal_teacher = orientation == "horizontal"
+    minimum = max(int(font_head.size * 0.62), 8)
+
+    # Сначала подбираем кегли тех подписей, которые пишутся горизонтально.
+    room_left = left + (teacher_width if teacher_column else 0)
+    room_font, room_lines = _fit_wrapped(
+        draw, labels["room"], room_width - pad * 4, font_head.size, minimum, bold=True
+    )
+    teacher_font = None
+    teacher_lines = []
+    if teacher_column and horizontal_teacher:
+        teacher_font, teacher_lines = _fit_wrapped(
+            draw, labels["teacher"], teacher_width - pad * 4, font_head.size, minimum, bold=True
+        )
+
+    def block_height(lines, font):
+        heights = [_text_size(draw, line, font)[1] for line in lines]
+        return sum(heights) + line_gap * max(len(heights) - 1, 0)
+
+    # Подписи дней недели — горизонтально, в одну строку: кегль подбирается так,
+    # чтобы самое длинное название («Понедельник») влезло целиком.
+    day_font = _brand_font(font_head.size, bold=True)
+    longest_day = max(
+        (_text_size(draw, label, day_font)[0] for label in labels["days"]), default=0
+    )
+    day_limit = day_width - pad * 4
+    while day_font.size > minimum and longest_day > day_limit:
+        day_font = _brand_font(day_font.size - 1, bold=True)
+        longest_day = max(
+            _text_size(draw, label, day_font)[0] for label in labels["days"]
+        )
+    head_row = max(block_height(room_lines, room_font) + pad * 2, int(16 * scale))
+
+    cells = []
+    if teacher_column:
+        teacher_style = "horizontal" if horizontal_teacher else "vertical"
+        if teacher_font is None:
+            # Вертикальная надпись «Преподаватель»: кегль по высоте строки.
+            teacher_font = _brand_font(font_head.size, bold=True)
+            while teacher_font.size > minimum and _text_size(
+                draw, labels["teacher"], teacher_font
+            )[0] > head_row - pad * 2:
+                teacher_font = _brand_font(teacher_font.size - 1, bold=True)
+        cells.append(
+            {
+                "text": labels["teacher"],
+                "kind": "teacher",
+                "style": teacher_style,
+                "rect": (left, left + teacher_width),
+                "font": teacher_font,
+                "lines": teacher_lines or [labels["teacher"]],
+            }
+        )
+    cells.append(
+        {
+            "text": labels["room"],
+            "kind": "label",
+            "style": "horizontal",
+            "rect": (room_left, room_left + room_width),
+            "font": room_font,
+            "lines": room_lines,
+        }
+    )
+    for index, label in enumerate(labels["days"]):
+        cells.append(
+            {
+                "text": label,
+                "kind": "day",
+                "style": "horizontal",
+                "rect": (
+                    day_left + day_width * index,
+                    day_left + day_width * (index + 1),
+                ),
+                "font": day_font,
+                "lines": [label],
+            }
+        )
+
+    title_font, title_lines = _fit_wrapped(
+        draw,
+        columns["title"],
+        table_width - pad * 4,
+        font_head.size,
+        minimum,
+        bold=True,
+    )
+    banner = max(
+        block_height(title_lines, title_font) + pad * 2, int(16 * scale)
+    )
+
+    return {
+        "cells": cells,
+        "banner": banner,
+        "head_row": head_row,
+        "height": banner + head_row,
+        "scale": scale,
+        "pad": pad,
+        "title": columns["title"],
+        "title_font": title_font,
+        "title_lines": title_lines,
+    }
+
+
+def _lines_of(entries):
+    """Тексты строк из подготовленного списка записей."""
+    return [entry["text"] if isinstance(entry, dict) else str(entry) for entry in entries]
+
+def _draw_cell_text(draw, item, rect, line_gap):
+    """Текст ячейки: центр и по горизонтали, и по вертикали."""
+    font = item["font"]
+    lines = _lines_of(item["lines"])
+    heights = [_text_size(draw, line, font)[1] for line in lines]
+    total = sum(heights) + line_gap * max(len(heights) - 1, 0)
+    top = rect[1] + (rect[3] - rect[1] - total) / 2
+    for line, line_height in zip(lines, heights):
+        width = _text_width(draw, line, font)
+        left = rect[0] + (rect[2] - rect[0] - width) / 2
+        draw.text((left, top), line, font=font, fill=TEXT_COLOR)
+        top += line_height + line_gap
+
+
+def _draw_table_head(draw, columns, head, top):
+    """Шапка таблицы: строка-баннер и одна строка заголовков с разделителями."""
+    left = columns["left"]
+    right = left + columns["table_width"]
+    pad = head["pad"]
+    scale = head["scale"]
+    line_gap = max(int(2 * scale), 2)
+    banner = head["banner"]
+    head_row = head["head_row"]
+    height = head["height"]
+    head_top = top + banner
+    teacher_column = columns["teacher_column"]
+    teacher_width = columns["teacher_width"]
+    room_width = columns["room_width"]
+    day_width = columns["day_width"]
+    day_left = columns["day_left"]
+
+    draw.rectangle([left, top, right, head_top], fill=HEADER_FILL, outline=GRID_COLOR)
+    draw.rectangle(
+        [left, head_top, right, top + height], fill="#FFFFFF", outline=GRID_COLOR
+    )
+    # Пункт 2: разделители столбцов в шапке — каждая ячейка обведена.
+    if teacher_column:
+        draw.line(
+            [left + teacher_width, head_top, left + teacher_width, top + height],
+            fill=GRID_COLOR,
+        )
+    draw.line(
+        [left + (teacher_width if teacher_column else 0) + room_width, head_top,
+         left + (teacher_width if teacher_column else 0) + room_width, top + height],
+        fill=GRID_COLOR,
+    )
+    draw.line([day_left, head_top, day_left, top + height], fill=GRID_COLOR)
+    for index in range(1, 6):
+        boundary = day_left + day_width * index
+        draw.line([boundary, head_top, boundary, top + height], fill=GRID_COLOR)
+    draw.line([left, head_top, right, head_top], fill=GRID_COLOR)
+
+    # Баннер: «Расписание на … учебный год (…)» по центру всей ширины.
+    title_font = head["title_font"]
+    title_lines = head["title_lines"]
+    title_heights = [_text_size(draw, line, title_font)[1] for line in title_lines]
+    title_total = sum(title_heights) + line_gap * max(len(title_lines) - 1, 0)
+    title_y = top + (banner - title_total) / 2
+    center = (left + right) / 2
+    for line, line_height in zip(title_lines, title_heights):
+        draw.text(
+            (center - _text_width(draw, line, title_font) / 2, title_y),
+            line,
+            font=title_font,
+            fill=TEXT_COLOR,
+        )
+        title_y += line_height + line_gap
+
+    for item in head["cells"]:
+        cell = (item["rect"][0], head_top, item["rect"][1], top + height)
+        if item["style"] == "vertical":
+            _draw_rotated(
+                draw,
+                ((cell[0] + cell[2]) / 2, (cell[1] + cell[3]) / 2),
+                item["text"],
+                item["font"],
+                TEXT_COLOR,
+            )
+            continue
+        _draw_cell_text(draw, item, cell, line_gap)
+    return height
+
+
+def _centre(draw, line, font, rect, width, height, fill=TEXT_COLOR):
+    """Рисует строку по центру прямоугольника (и по горизонтали, и по вертикали)."""
+    text_width = _text_width(draw, line, font)
+    draw.text(
+        (rect[0] + (width - text_width) / 2, rect[1] + (height - _text_size(draw, line, font)[1]) / 2),
+        line,
+        font=font,
+        fill=fill,
+    )
+
+
+def _draw_rows(draw, columns, rows, top, fonts, orientation="vertical", image=None):
+    font_cell = fonts["cell"]
+    font_small = fonts["small"]
+    scale = fonts["scale"]
+    left = columns["left"]
+    right = left + columns["table_width"]
+    teacher_column = columns["teacher_column"]
+    teacher_width = columns["teacher_width"]
+    room_width = columns["room_width"]
+    day_width = columns["day_width"]
+    day_left = columns["day_left"]
+    text_pad = int(6 * scale)
+    horizontal_teacher = orientation == "horizontal"
+
+    label_left = left + (teacher_width if teacher_column else 0)
+    room_rect = (label_left, 0, label_left + room_width, 0)
+
+    y = top
+    for row in rows:
+        row_height = row["height"]
+        bottom = y + row_height
+        fill = _rgb(PROGRAM_COLORS[row["color_index"] % len(PROGRAM_COLORS)])
+        draw.rectangle([left, y, right, bottom], fill=fill, outline=GRID_COLOR)
+        if teacher_column:
+            draw.line(
+                [left + teacher_width, y, left + teacher_width, bottom], fill=GRID_COLOR
+            )
+        draw.line([label_left + room_width, y, label_left + room_width, bottom], fill=GRID_COLOR)
+        for index in range(1, 6):
+            boundary = day_left + day_width * index
+            draw.line([boundary, y, boundary, bottom], fill=GRID_COLOR)
+
+        # Столбец преподавателя: по центру ячейки и по горизонтали, и по вертикали.
+        # Каждая часть ФИО проверяется детектором переполнения по своей ячейке.
+        group = row.get("teacher_group")
+        if group and teacher_column:
+            layout_info = group.get("layout") or {}
+            cell_top, cell_bottom = group["top"], group["bottom"]
+            cell = (left, cell_top, left + teacher_width, cell_bottom)
+            if layout_info.get("mode") == "horizontal":
+                font = layout_info.get("font")
+                lines = layout_info.get("lines") or []
+                heights = [_text_size(draw, line, font)[1] for line in lines]
+                total = sum(heights) + int(2 * scale) * max(len(lines) - 1, 0)
+                text_y = cell_top + (cell_bottom - cell_top - total) / 2
+                for line, line_height in zip(lines, heights):
+                    width = _text_width(draw, line, font)
+                    text_x = left + (teacher_width - width) / 2
+                    draw.text((text_x, text_y), line, font=font, fill=TEXT_COLOR)
+                    _note_box("teacher", line, font, cell, text_x, text_y)
+                    text_y += line_height + int(2 * scale)
+            elif layout_info.get("mode") == "vertical":
+                parts = layout_info.get("parts") or []
+                step = layout_info.get("step") or 0
+                glyph = layout_info.get("text_height") or 0
+                font = layout_info.get("font")
+                total = step * len(parts)
+                top_part = (cell_top + cell_bottom) / 2 - total / 2 + glyph / 2
+                for index, part in enumerate(parts):
+                    center_y = top_part + index * step
+                    ink = _draw_rotated(
+                        draw,
+                        (left + teacher_width / 2, center_y),
+                        part,
+                        font,
+                        TEXT_COLOR,
+                        on_draw=image,
+                    )
+                    _note_box_rect("teacher", part, font, cell, ink)
+
+        # Столбец «ДОП, № кабинета»: название программы и подпись кабинета —
+        # один блок, отцентрованный в ячейке целиком (и по горизонтали, и по вертикали).
+        # Пометка отсутствия преподавателя идёт третьей строкой этого же блока.
+        program_rect = (label_left, y, label_left + room_width, bottom)
+        subject_height = row["subject_block_height"]
+        cabinet_height = row["cabinet_block_height"]
+        absence_height = row["absence_block_height"]
+        gap_cabinet = int(4 * scale) if cabinet_height else 0
+        gap_absence = int(4 * scale) if absence_height else 0
+        combined = (
+            subject_height + cabinet_height + absence_height + gap_cabinet + gap_absence
+        )
+        # Блок «программа + кабинет + отсутствие» центрируем как единое целое;
+        # за границы ячейки он не выходит, потому что высота строки считается
+        # с запасом.
+        top_shift = (combined - (bottom - y)) / 2
+        _draw_text_block(
+            draw,
+            {"font": row["subject_font"], "lines": row["subject_lines"]},
+            program_rect,
+            int(2 * scale),
+            centre_shift=top_shift,
+        )
+        if row["cabinet_lines"]:
+            _draw_text_block(
+                draw,
+                {"font": row["cabinet_font"], "lines": row["cabinet_lines"]},
+                program_rect,
+                int(2 * scale),
+                centre_shift=top_shift
+                + subject_height / 2
+                + gap_cabinet
+                + cabinet_height / 2,
+                fill=MUTED_COLOR,
+            )
+        if row["absence_lines"]:
+            _draw_text_block(
+                draw,
+                {"font": row["absence_font"], "lines": row["absence_lines"]},
+                program_rect,
+                int(2 * scale),
+                centre_shift=top_shift
+                + subject_height / 2
+                + gap_cabinet
+                + cabinet_height
+                + gap_absence
+                + absence_height / 2,
+                fill=MUTED_COLOR,
+            )
+
+        # Ячейки дней: время и группы, каждая строка по центру своей ячейки.
+        for day_index in range(6):
+            cell_left = day_left + day_width * day_index
+            cell = (cell_left, y, cell_left + day_width, bottom)
+            cell_y = y + text_pad
+            for block in row["cells"][day_index]:
+                if not block:
+                    continue
+                block_height = block["time_height"] + sum(
+                    line["height"] for line in block["lines"]
+                )
+                if cell_y + block_height > bottom - text_pad:
+                    break
+                line_y = cell_y + (block_height - (block_height)) / 2
+                text_y = cell_y
+                _centre(
+                    draw,
+                    block["time"],
+                    font_cell,
+                    (cell_left, text_y, cell_left + day_width, text_y),
+                    day_width,
+                    block["time_height"],
+                )
+                text_y += block["time_height"]
+                for line in block["lines"]:
+                    _centre(
+                        draw,
+                        line["text"],
+                        line["font"],
+                        (cell_left, text_y, cell_left + day_width, text_y),
+                        day_width,
+                        line["height"],
+                        fill=line["color"],
+                    )
+                    text_y += line["height"]
+                cell_y += block_height
+        y = bottom
+    return y - top
+
+
+def _lines_of(entries):
+    """Тексты строк из подготовленного списка записей."""
+    return [entry["text"] if isinstance(entry, dict) else str(entry) for entry in entries]
+
+
+def _draw_text_block(draw, item, rect, line_gap, centre_shift=0, fill=TEXT_COLOR):
+    """Блок строк по центру ячейки; centre_shift сдвигает блок внутри ячейки."""
+    font = item["font"]
+    lines = _lines_of(item["lines"])
+    heights = [_text_size(draw, line, font)[1] for line in lines]
+    total = sum(heights) + line_gap * max(len(heights) - 1, 0)
+    top = rect[1] + (rect[3] - rect[1] - total) / 2 + centre_shift
+    for line, line_height in zip(lines, heights):
+        width = _text_width(draw, line, font)
+        draw.text(
+            (rect[0] + (rect[2] - rect[0] - width) / 2, top),
+            line,
+            font=font,
+            fill=fill,
+        )
+        top += line_height + line_gap
+
+
+# --------------------------------------------------------------------------
+# Главная функция
+# --------------------------------------------------------------------------
+def schedule_image(term, branch, orientation="vertical"):
+    """Рисует расписание и возвращает (BytesIO с PNG, имя файла)."""
+    layout = LAYOUTS.get(orientation) or LAYOUTS["vertical"]
+    scale = float(layout["scale"])
+    width = int(layout["ref_width"] * scale)
+    min_height = int(layout["min_height"] * scale)
+    margin = int(15 * scale)
+    padding = int(14 * scale)
+
+    days = list(Schedule.Weekday.choices[:6])
+    teachers, subject_index = collect_lessons(term, branch)
+    lesson_count = sum(
+        len(program["cells"][value])
+        for teacher in teachers
+        for program in teacher["programs"].values()
+        for value, _ in days
+    )
+
+    # Строки таблицы — по программам. С преподавателем строки идут по
+    # преподавателям (каждый со своим цветом), без него — по названию программы.
+    teacher_column = (
+        sum(len(teacher["programs"]) for teacher in teachers)
+        <= TEACHER_COLUMN_MAX_PROGRAMS
+    )
+    programs = []
+    if teacher_column:
+        ordered_teachers = sorted(
+            enumerate(teachers), key=lambda item: item[1]["name"].casefold()
+        )
+        for teacher_index, (_position, teacher) in enumerate(ordered_teachers):
+            for subject_id, program in sorted(
+                teacher["programs"].items(), key=lambda item: item[1]["subject"].casefold()
+            ):
+                programs.append(
+                    {
+                        "subject_id": subject_id,
+                        "subject": program["subject"],
+                        "rooms": program["rooms"],
+                        "absence": program["absence"],
+                        "cells": program["cells"],
+                        "teacher": teacher["name"],
+                        "teacher_index": teacher_index,
+                    }
+                )
+    else:
+        for teacher in teachers:
+            for subject_id, program in teacher["programs"].items():
+                programs.append(
+                    {
+                        "subject_id": subject_id,
+                        "subject": program["subject"],
+                        "rooms": program["rooms"],
+                        "absence": program["absence"],
+                        "cells": program["cells"],
+                        "teacher": teacher["name"],
+                        "teacher_index": 0,
+                    }
+                )
+        programs.sort(key=lambda item: (item["subject"].casefold(), item["rooms"][:1]))
+
+    measure = ImageDraw.Draw(Image.new("RGB", (10, 10), "white"))
+    font_program = _brand_font(int(13 * scale), bold=True)
+    font_caption = _brand_font(int(9 * scale), italic=True)
+    font_cell = _brand_font(int(11 * scale))
+    font_small = _brand_font(int(10 * scale))
+    font_online = _brand_font(int(10 * scale), italic=True)
+    font_head = _brand_font(int(12 * scale))
+    font_teacher = _brand_font(int(13 * scale), bold=True)
+
+    table_width = width - margin * 2
+    pad = int(6 * scale)
+
+    # Ширина столбца преподавателя: по самому длинному слову ФИО в базовом кегле,
+    # чтобы фамилия, имя и отчество печатались цельными вертикальными строками
+    # и в объединённую ячейку влезало меньше строк (таблица остаётся компактной).
+    teacher_width = None
+    if teacher_column:
+        sample_font = _brand_font(
+            max(int(VERTICAL_NAME_FONT * scale), MIN_TEACHER_FONT), bold=True
+        )
+        longest_word_width = max(
+            (
+                _text_size(measure, word, sample_font)[0]
+                for teacher in teachers
+                for word in str(teacher["name"]).split()
+            ),
+            default=0,
+        )
+        teacher_width = int(max(longest_word_width + pad * 6, int(table_width * 0.12)))
+        teacher_width = min(teacher_width, int(table_width * 0.30))
+
+    columns = _table_columns(table_width, teacher_column, teacher_width)
+    columns.update(
+        {
+            "left": margin,
+            "table_width": table_width,
+            "teacher_column": teacher_column,
+        }
+    )
+    day_width = columns["day_width"]
+    day_left = margin + table_width - day_width * 6
+    columns["day_left"] = day_left
+
+    # Бюджеты текста: небольшой запас на боковые просветы глифов Montserrat.
+    program_label_width = columns["room_width"]
+    text_width = int((program_label_width - padding * 2) * 0.94) - pad * 2
+    day_text_width = int((day_width - pad * 2) * 0.94)
+
+    # --- подготовка строк ---------------------------------------------------
+    # Три прохода: сначала содержимое строк, затем подбор кегля ФИО под высоту
+    # объединённой ячейки, затем сборка строк.
+    def build_cells(program):
+        cells = []
+        for value, _label in days:
+            blocks = []
+            for block in _cell_blocks(program["cells"].get(value) or []):
+                lines = []
+                for group_index, entry in enumerate(block["groups"]):
+                    online = group_index == 0 and block["online"]
+                    label = entry["group"]
+                    color = MUTED_COLOR
+                    if online:
+                        # «ОНЛАЙН» отдельной строкой — так группа и пометка
+                        # гарантированно помещаются в узкой колонке дня.
+                        label = f"{entry['group']}\n{str(_('ОНЛАЙН'))}"
+                        color = BRANCH_COLOR
+                    label_font, label_lines = _fit_wrapped(
+                        measure,
+                        label,
+                        day_text_width,
+                        font_online.size if online else font_small.size,
+                        8,
+                        italic=online,
+                    )
+                    for line in label_lines:
+                        lines.append(
+                            {
+                                "text": line,
+                                "font": label_font,
+                                "color": color,
+                                "height": _line_height(measure, line, label_font, scale),
+                            }
+                        )
+                time_font, time_lines = _fit_wrapped(
+                    measure, block["time"], day_text_width, font_cell.size, 8
+                )
+                blocks.append(
+                    {
+                        "time": time_lines[0],
+                        "time_height": _line_height(measure, time_lines[0], time_font, scale),
+                        "lines": lines,
+                    }
+                )
+            cells.append(blocks)
+        return cells
+
+    def block_total(lines):
+        return sum(line["height"] for line in lines) + int(2 * scale) * max(
+            len(lines) - 1, 0
+        )
+
+    def cell_content_height(cells):
+        best = 0
+        for blocks in cells:
+            total = sum(
+                block["time_height"] + sum(line["height"] for line in block["lines"])
+                for block in blocks
+            )
+            best = max(best, total)
+        return best
+
+    # Проход 1: содержимое строк и предварительная высота.
+    draft = []
+    for index, program in enumerate(programs):
+        subject_font, subject_lines = _fit_wrapped(
+            measure, program["subject"], text_width, font_program.size, 9, bold=True
+        )
+        subject_lines = [
+            {"text": line, "height": _line_height(measure, line, subject_font, scale)}
+            for line in subject_lines
+        ]
+        caption = cabinet_caption(program["rooms"])
+        cabinet_font = None
+        cabinet_lines = []
+        if caption:
+            cabinet_font, caption_text = _fit_wrapped(
+                measure, caption, text_width, font_program.size, 8, italic=True
+            )
+            cabinet_lines = [
+                {"text": line, "height": _line_height(measure, line, cabinet_font, scale)}
+                for line in caption_text
+            ]
+        # Пометка отсутствия преподавателя — отдельный мелкий блок под кабинетом,
+        # тем же кеглем и с тем же запасом на просветы глифов, что и подпись
+        # кабинета. Высоту строки она учитывает наравне с кабинетом, поэтому
+        # ничего не выходит за границы ячейки.
+        absence_font = None
+        absence_lines = []
+        if program.get("absence"):
+            absence_font, absence_text = _fit_wrapped(
+                measure,
+                program["absence"],
+                int(text_width * 0.94),
+                font_program.size,
+                8,
+                italic=True,
+            )
+            absence_lines = [
+                {"text": line, "height": _line_height(measure, line, absence_font, scale)}
+                for line in absence_text
+            ]
+        cells = build_cells(program)
+        draft.append(
+            {
+                "subject_id": program["subject_id"],
+                "teacher": program["teacher"],
+                "teacher_index": program["teacher_index"],
+                "teacher_programs": 1,
+                "subject_font": subject_font,
+                "subject_lines": subject_lines,
+                "cabinet_font": cabinet_font,
+                "cabinet_lines": cabinet_lines,
+                "absence_font": absence_font,
+                "absence_lines": absence_lines,
+                "cells": cells,
+                "content_height": cell_content_height(cells),
+            }
+        )
+
+    # Проход 2: высоты строк — по содержимому, затем подбор кегля ФИО.
+    # Высота строки зависит только от содержимого ячейки (программа + кабинет,
+    # время + группы). Блок ФИО в высоту строки НЕ входит: если имя не помещается
+    # в объединённую ячейку, уменьшаем кегль ФИО, а не растягиваем таблицу.
+    teacher_layout = {}
+    min_row = int(58 * scale)
+    row_heights = []
+    for item in draft:
+        program_height = sum(line["height"] for line in item["subject_lines"])
+        if item["cabinet_lines"]:
+            program_height += block_total(item["cabinet_lines"]) + int(4 * scale)
+        if item["absence_lines"]:
+            program_height += block_total(item["absence_lines"]) + int(4 * scale)
+        row_heights.append(
+            max(
+                min_row,
+                item["content_height"] + padding * 2,
+                program_height + padding * 2,
+            )
+        )
+
+    if teacher_column:
+        # Объединённые ячейки преподавателей: имя и диапазон строк.
+        teacher_rows = []
+        position = 0
+        # Тот же порядок, что и у строк таблицы: преподаватели по алфавиту.
+        for teacher in sorted(teachers, key=lambda item: item["name"].casefold()):
+            count = len(teacher["programs"])
+            if not count:
+                continue
+            teacher_rows.append((teacher["name"], position, count))
+            position += count
+
+        name_base = (
+            int(12 * scale)
+            if orientation == "horizontal"
+            else max(int(VERTICAL_NAME_FONT * scale * 0.72), MIN_TEACHER_FONT)
+        )
+        name_base = max(name_base, MIN_TEACHER_FONT)
+        # Предел роста одной строки: таблица не должна раздуваться из-за ФИО.
+        limit_row = int(170 * scale) + (
+            int(30 * scale) if any(item["absence_lines"] for item in draft) else 0
+        )
+        margin_height = int(20 * scale)
+
+        def teacher_fits(name, span, size):
+            return (
+                _teacher_block_layout(
+                    measure,
+                    name,
+                    orientation,
+                    _brand_font(size, bold=True),
+                    teacher_width,
+                    span,
+                )
+                is not None
+            )
+
+        # ФИО подстраивается под строки: сначала уменьшаем кегль, и только если
+        # базовый кегль не влезает, немного увеличиваем строку группы.
+        for _round in range(24):
+            changed = False
+            for name, first, count in teacher_rows:
+                span = sum(row_heights[first : first + count])
+                if teacher_fits(name, span, name_base):
+                    continue
+                last = first + count - 1
+                if row_heights[last] >= limit_row:
+                    continue
+                needed = _teacher_required_height(
+                    measure,
+                    name,
+                    orientation,
+                    _brand_font(name_base, bold=True),
+                    teacher_width,
+                )
+                deficit = min(
+                    max(needed + int(8 * scale) - span, margin_height),
+                    limit_row - row_heights[last],
+                )
+                if deficit > 0:
+                    row_heights[last] += deficit
+                    changed = True
+            if not changed:
+                break
+
+        teacher_spans = {}
+        for name, first, count in teacher_rows:
+            teacher_spans[name] = sum(row_heights[first : first + count])
+
+        # Общий кегль: минимальный из подходящих по всем преподавателям, чтобы
+        # ФИО читались одинаково; затем каждый подгоняется под свою ячейку.
+        cap = name_base
+        for name, _first, _count in teacher_rows:
+            span = teacher_spans[name]
+            if span <= 0:
+                continue
+            size = cap
+            while size > MIN_TEACHER_FONT:
+                if teacher_fits(name, span, size):
+                    break
+                size -= 1
+            cap = min(cap, size)
+
+        for name in teacher_spans:
+            teacher_layout[name] = _fit_teacher_layout(
+                measure,
+                name,
+                orientation,
+                cap,
+                teacher_width,
+                teacher_spans[name],
+            )
+    else:
+        min_row = int(58 * scale)
+
+    # Проход 3: сборка строк (высоты уже посчитаны по содержимому).
+    prepared = []
+    for index, item in enumerate(draft):
+        prepared.append(
+            {
+                "teacher": item["teacher"],
+                "teacher_index": item["teacher_index"],
+                "subject_font": item["subject_font"],
+                "subject_lines": item["subject_lines"],
+                "subject_block_height": block_total(item["subject_lines"]),
+                "cabinet_font": item["cabinet_font"],
+                "cabinet_lines": item["cabinet_lines"],
+                "cabinet_block_height": block_total(item["cabinet_lines"]),
+                "absence_font": item["absence_font"],
+                "absence_lines": item["absence_lines"],
+                "absence_block_height": block_total(item["absence_lines"]),
+                "cells": item["cells"],
+                "height": row_heights[index],
+                # С преподавателем цвет один на преподавателя, без него — по программе.
+                "color_index": (
+                    item["teacher_index"]
+                    if teacher_column
+                    else subject_index.get(item["subject_id"], index)
+                ),
+            }
+        )
+
+    table_body_height = sum(row["height"] for row in prepared)
+
+    # --- границы групп преподавателей (только когда есть столбец) ----------
+    if teacher_column:
+        position = 0
+        for teacher in sorted(teachers, key=lambda item: item["name"].casefold()):
+            count = len(teacher["programs"])
+            if not count:
+                continue
+            prepared[position]["teacher_group"] = {
+                "name": teacher["name"],
+                "index": position,
+                "count": count,
+                "layout": teacher_layout.get(teacher["name"], {}),
+            }
+            position += count
+
+    # --- холст и шапка ------------------------------------------------------
+    image = Image.new("RGB", (width, 10), "white")
+    draw = ImageDraw.Draw(image)
+
+    context = {
+        "title": str(_("РАСПИСАНИЕ")),
+        "address": str(branch.name if branch else _("все адреса")).upper(),
+        "scale": scale,
+        "orientation": orientation,
+        "title_size": int(46 * scale),
+        "title_min": int(20 * scale),
+        "address_size": int(34 * scale),
+        "address_min": int(16 * scale),
+    }
+
+    header_box = (margin, int(8 * scale), width - margin, int(HEADER_REF_HEIGHT * scale))
+
+    year = getattr(getattr(term, "year", None), "title", "") if term is not None else ""
+    branch_name = branch.name if branch else str(_("все адреса"))
+    labels = {
+        "teacher": str(_("ФИО преп.")),
+        "room": str(_("ДОП, № кабинета")),
+        "days": [str(label) for _value, label in days],
+    }
+    columns["title"] = str(
+        _("Расписание на %(year)s учебный год (%(branch)s)")
+        % {"year": year, "branch": branch_name}
+    )
+    head = _build_head(draw, columns, labels, font_head, scale, orientation)
+    table_top = header_box[3] + int(10 * scale)
+    body_top = table_top + head["height"]
+
+    # Высота холста по содержимому. Маскот снизу — только вертикальный формат
+    # (layout["bottom_mascot"]) и только если таблица короткая.
+    natural_height = body_top + table_body_height + int(24 * scale)
+    sheet_height = int(width * 1920 / 1080)
+    table_bottom_natural = body_top + table_body_height
+    mascot_below = (
+        bool(prepared)
+        and layout["bottom_mascot"]
+        and table_bottom_natural <= int(sheet_height * 0.6)
+    )
+    if not prepared:
+        # Пустое расписание: холст только под шапку и строку-подсказку.
+        total_height = max(body_top + int(90 * scale), min_height)
+    elif mascot_below:
+        total_height = min(
+            max(sheet_height, natural_height + int(layout["space_below"] * scale)),
+            int(natural_height * 2.2),
+        )
+    else:
+        total_height = max(natural_height, min_height)
+
+    canvas = Image.new("RGB", (width, total_height), "white")
+    canvas.paste(image, (0, 0))
+    image = canvas
+    draw = ImageDraw.Draw(image)
+    _draw_header(image, draw, context, width, header_box, margin + table_width)
+    _draw_table_head(draw, columns, head, table_top)
+    fonts = {
+        "program": font_program,
+        "italic": font_caption,
+        "cell": font_cell,
+        "small": font_small,
+        "online": font_online,
+        "teacher": font_teacher,
+        "scale": scale,
+    }
+
+    if prepared:
+        y = body_top
+        for row in prepared:
+            group = row.get("teacher_group")
+            if group:
+                # Объединённая ячейка преподавателя: все его строки подряд.
+                group["top"] = y
+                group["bottom"] = y + sum(
+                    prepared[group["index"] + offset]["height"]
+                    for offset in range(group["count"])
+                )
+            y += row["height"]
+        _draw_rows(draw, columns, prepared, body_top, fonts, orientation, image)
+        table_bottom = body_top + table_body_height
+    else:
+        empty_height = int(52 * scale)
+        draw.rectangle(
+            [
+                columns["left"],
+                body_top,
+                columns["left"] + table_width,
+                body_top + empty_height,
+            ],
+            fill="#FFFFFF",
+            outline=GRID_COLOR,
+        )
+        draw.text(
+            (columns["left"] + padding, body_top + empty_height / 2),
+            str(_("На этом адресе занятий в выбранном полугодии пока нет.")),
+            font=font_program,
+            fill=MUTED_COLOR,
+            anchor="lm",
+        )
+        table_bottom = body_top + empty_height
+
+    # Маскот под таблицей: только вертикальный формат, только позы 1…9.
+    # Поза выбирается по числу занятий — одно расписание всегда даёт ту же позу.
+    if mascot_below:
+        pose = ASSET_MASCOTS[lesson_count % len(ASSET_MASCOTS)]
+        free_height = total_height - table_bottom
+        target_height = int(min(free_height * 0.62, width * 0.26))
+        mascot = _scaled_asset(pose, width * 0.30, max(target_height, 1))
+        if mascot is not None:
+            mascot_x = int((width - mascot.size[0]) / 2)
+            mascot_y = table_bottom + max(
+                int((free_height - mascot.size[1]) / 2), padding
+            )
+            image.paste(mascot, (mascot_x, mascot_y), mascot)
+
+    stream = BytesIO()
+    image.save(stream, format="PNG", optimize=True)
+    stream.seek(0)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M")
+    filename = f"schedule_{orientation}_{stamp}.png"
+    return stream, filename
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

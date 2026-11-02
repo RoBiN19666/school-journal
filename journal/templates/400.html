@@ -1,0 +1,10 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Некорректный запрос · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+    {% trans "Запрос не понят" as card_title %}
+    {% trans "Сервер не смог разобрать запрос. Чаще всего так бывает, если форма устарела: обновите страницу и попробуйте ещё раз." as card_message %}
+    {% include "journal/includes/error_card.html" with code="400" title=card_title message=message|default:card_message %}
+{% endblock %}

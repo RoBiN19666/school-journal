@@ -1,0 +1,188 @@
+{% extends "journal/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Перенос из другого полугодия · Электронный журнал" %}{% endblock %}
+
+{% block content %}{% trans "без преподавателя" as no_teacher %}
+<div class="mb-6">
+    <a href="{% url 'periods' %}" class="text-sm text-slate-500 hover:text-slate-700">← {% trans "Учебные периоды" %}</a>
+    <h1 class="mt-2 text-2xl font-semibold">{% trans "Перенос из другого полугодия" %}</h1>
+    <p class="text-sm text-slate-500">
+        {% blocktrans %}Программы вместе с составом групп и расписанием можно перенести из любого полугодия и любого адреса
+        в активные полугодие и адрес. Программы в каждом полугодии и адресе свои, поэтому при переносе они
+        создаются заново. Повторный перенос ничего не дублирует: существующие используются, одинаковые
+        занятия пропускаются.{% endblocktrans %}
+    </p>
+</div>
+
+{% if target %}
+    <div class="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900">
+        {% trans "Переносим в активные полугодие и адрес:" %}
+        <span class="font-semibold">{{ target.full_title }}</span>
+        <span class="text-indigo-700">({{ target.date_range }})</span>
+        {% if target_branch %}· <span class="font-semibold">{{ target_branch.name }}</span>{% endif %}.
+        {% trans "Если это не те полугодие и адрес — переключите их в шапке страницы." %}
+        <span class="mt-1 block text-xs text-indigo-700">{{ rooms_note }}</span>
+    </div>
+{% endif %}
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-4">
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-semibold">{% trans "Откуда переносим" %}</h2>
+        <form method="get" class="mt-3 space-y-3">
+            <div>
+                <label for="source" class="mb-1 block text-xs font-medium text-slate-500">{% trans "Полугодие-источник" %}</label>
+                <select name="source" id="source" onchange="this.form.submit()"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-indigo-500">
+                    {% for term in terms %}
+                        <option value="{{ term.pk }}" {% if source and term.pk == source.pk %}selected{% endif %}>
+                            {{ term.full_title }} ({{ term.date_range }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="source_branch" class="mb-1 block text-xs font-medium text-slate-500">{% trans "Адрес-источник" %}</label>
+                <select name="source_branch" id="source_branch" onchange="this.form.submit()"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-indigo-500">
+                    {% for branch in branches %}
+                        <option value="{{ branch.pk }}" {% if source_branch and branch.pk == source_branch.pk %}selected{% endif %}>
+                            {{ branch.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <noscript>
+                <button type="submit" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">{% trans "Показать" %}</button>
+            </noscript>
+        </form>
+
+        {% if source %}
+            <dl class="mt-4 space-y-1 text-sm text-slate-600">
+                <div class="flex justify-between"><dt>{% trans "Программ" %}</dt><dd class="font-medium">{{ subjects_count }}</dd></div>
+                <div class="flex justify-between"><dt>{% trans "Групп" %}</dt><dd class="font-medium">{{ groups|length }}</dd></div>
+            </dl>
+        {% endif %}
+
+        {% if report %}
+            <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+                <p class="font-medium">{% trans "Что получилось" %}</p>
+                <ul class="mt-1 space-y-0.5">
+                    <li>{% blocktrans with count=report.subjects_created %}программ создано: {{ count }}{% endblocktrans %}</li>
+                    <li>{% blocktrans with count=report.groups_created %}групп создано: {{ count }}{% endblocktrans %}</li>
+                    <li>{% blocktrans with count=report.groups_reused %}использовано существующих: {{ count }}{% endblocktrans %}</li>
+                    <li>{% blocktrans with count=report.students_added %}учеников добавлено: {{ count }}{% endblocktrans %}</li>
+                    <li>{% blocktrans with count=report.lessons_created %}занятий создано: {{ count }}{% endblocktrans %}</li>
+                    <li>{% blocktrans with count=report.lessons_skipped %}занятий пропущено: {{ count }}{% endblocktrans %}</li>
+                    {% if report.one_off_skipped %}
+                        <li>{% blocktrans with count=report.one_off_skipped %}разовых занятий не переносится: {{ count }}{% endblocktrans %}</li>
+                    {% endif %}
+                </ul>
+                {% if report.conflicts %}
+                    <p class="mt-2 font-medium">{% trans "Пропущено из-за занятости преподавателя:" %}</p>
+                    <ul class="mt-1 list-disc space-y-0.5 pl-4">
+                        {% for item in report.conflicts %}
+                            <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="xl:col-span-3">
+        <form method="post" class="rounded-2xl bg-white p-5 shadow-sm">
+            {% csrf_token %}
+            <input type="hidden" name="source" value="{{ source.pk|default:'' }}">
+            <input type="hidden" name="source_branch" value="{{ source_branch.pk|default:'' }}">
+
+            <div class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold">{% trans "Что переносим" %}</h2>
+                    <p class="text-sm text-slate-500">
+                        {% if source %}{{ source.full_title }}{% if source_branch %} ({{ source_branch.name }}){% endif %} → {% endif %}
+                        {% if target %}{{ target.full_title }}{% if target_branch %} ({{ target_branch.name }}){% endif %}{% else %}{% trans "активное полугодие не выбрана" %}{% endif %}
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-4 text-sm">
+                    <label class="flex items-center gap-2 text-slate-700">
+                        <input type="checkbox" name="with_students" checked
+                               class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        {% trans "Состав учеников" %}
+                    </label>
+                    <label class="flex items-center gap-2 text-slate-700">
+                        <input type="checkbox" name="with_schedule" checked
+                               class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        {% trans "Расписание" %}
+                    </label>
+                </div>
+            </div>
+
+            {% if groups %}
+                <div class="mt-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                    <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                        <input type="checkbox" id="select-all-groups"
+                               class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        {% trans "Отметить все группы" %}
+                    </label>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input type="search" id="group-search"
+                               data-filter-items="#copy-groups" data-filter-counter="#groups-visible"
+                               placeholder="{% trans 'Поиск по программе или группе' %}"
+                               class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                        <span class="text-xs text-slate-400">
+                            {% trans "показано" %} <span id="groups-visible">{{ groups|length }}</span> {% trans "из" %} {{ groups|length }}
+                        </span>
+                    </div>
+                </div>
+                <div id="copy-groups" class="mt-3 space-y-2">
+                    {% for row in groups %}
+                        <label data-filter-text="{{ row.group.subject.name }} {{ row.group.name }} {{ row.group.subject.teacher.full_name }}"
+                               class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 text-sm transition hover:bg-slate-50">
+                            <span class="flex items-center gap-3">
+                                <input type="checkbox" name="groups" value="{{ row.group.pk }}"
+                                       class="group-checkbox h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <span>
+                                    <span class="font-medium">{{ row.group.subject.name }} · {{ row.group.name }}</span>
+                                    <span class="block text-xs text-slate-500">
+                                        {% blocktrans with students_count=row.students lessons_count=row.lessons %}учеников: {{ students_count }} · занятий: {{ lessons_count }} ·{% endblocktrans %}
+                                        {{ row.group.subject.teacher.full_name|default:no_teacher }}
+                                    </span>
+                                </span>
+                            </span>
+                            {% if row.already %}
+                                <span class="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-700">
+                                    {% blocktrans with students_count=row.already_students %}уже есть в активного полугодия: учеников {{ students_count }}{% endblocktrans %}
+                                </span>
+                            {% else %}
+                                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">{% trans "будет создана" %}</span>
+                            {% endif %}
+                        </label>
+                    {% endfor %}
+                </div>
+                <div class="mt-4 flex flex-wrap items-center gap-3">
+                    <button type="submit"
+                            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                        {% trans "Перенести выбранное" %}
+                    </button>
+                    <a href="{% url 'schedule' %}"
+                       class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                        {% trans "Отмена" %}
+                    </a>
+                </div>
+            {% else %}
+                <p class="mt-4 text-sm text-slate-500">
+                    {% if source %}
+                        {% blocktrans with term_title=source.full_title %}В полугодии «{{ term_title }}»{% endblocktrans %}{% if source_branch %}{% blocktrans with branch_name=source_branch.name %} на адресе «{{ branch_name }}»{% endblocktrans %}{% endif %}
+                        {% trans "нет программ с группами — переносить нечего." %}
+                    {% else %}
+                        {% trans "Выберите полугодие-источник слева." %}
+                    {% endif %}
+                </p>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<script src="{% static 'journal/periods-copy.js' %}?v=24" defer></script>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Ошибка на сервере · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+    {% trans "Что-то сломалось на сервере" as card_title %}
+    {% trans "Ошибка уже записана в журнал. Данные не потеряны: попробуйте обновить страницу через минуту или вернитесь назад и повторите действие." as card_message %}
+    {% include "journal/includes/error_card.html" with code="500" title=card_title message=message|default:card_message %}
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Ученики" %} · {% trans "Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-2xl font-semibold">{% trans "Ученики" %}</h1>
+        <p class="text-sm text-slate-500">{% blocktrans with total=total_count %}Всего в базе: {{ total }}{% endblocktrans %}</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+        <form method="get" class="flex items-center gap-2">
+            <input type="search" name="q" value="{{ query }}" placeholder="{% trans 'Поиск по ФИО' %}"
+                   data-autosubmit
+                   class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+        </form>
+        <a href="{% url 'student_import' %}"
+           class="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-50">
+            {% trans "Импорт из Excel" %}
+        </a>
+        <a href="{% url 'export_students' %}"
+           class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+            {% trans "Excel" %}
+        </a>
+        <a href="{% url 'student_add' %}"
+           class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+            {% trans "Добавить" %}
+        </a>
+    </div>
+</div>
+
+<div class="overflow-hidden rounded-2xl bg-white shadow-sm">
+    <div class="overflow-x-auto">
+                                        <table data-sortable class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-5 py-3">{% trans "Фамилия" %}</th>
+                <th class="px-5 py-3">{% trans "Имя" %}</th>
+                <th class="px-5 py-3">{% trans "Отчество" %}</th>
+                <th class="px-5 py-3">{% trans "Дата рождения" %}</th>
+                <th class="px-5 py-3">{% trans "Отпускать при БП" %}</th>
+                <th class="px-5 py-3">{% trans "Групп" %}</th>
+                <th class="px-5 py-3 text-right" data-sort-skip>{% trans "Действия" %}</th>
+            </tr>
+        </thead>
+        <tbody id="students-table-body" class="divide-y divide-slate-100">
+            {% for student in students %}
+                <tr data-filter-text="{{ student.full_name }} {{ student.birth_date|date:'d.m.Y' }} {{ student.dismissal_short }} {{ student.dismissal_title }}"
+                    class="odd:bg-white even:bg-slate-50/60 hover:bg-indigo-50/50">
+                    <td class="px-5 py-3 font-medium">{{ student.last_name }}</td>
+                    <td class="px-5 py-3">{{ student.first_name }}</td>
+                    <td class="px-5 py-3 text-slate-600">{{ student.middle_name|default:"—" }}</td>
+                    <td class="px-5 py-3 text-slate-600">{{ student.birth_date|date:"d.m.Y"|default:"—" }}</td>
+                    <td class="px-5 py-3">
+                        {% include "journal/includes/dismissal_badge.html" with student=student %}
+                    </td>
+                    <td class="px-5 py-3 text-slate-600">{{ student.groups_count }}</td>
+                    <td class="px-5 py-3">
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="{% url 'student_edit' student.pk %}"
+                               class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">
+                                {% trans "Изменить" %}
+                            </a>
+                            <a href="{% url 'student_delete' student.pk %}"
+                               class="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50">
+                                {% trans "Удалить" %}
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="7" class="px-5 py-10 text-center text-slate-500">
+                        {% if query %}{% blocktrans with search=query %}Ничего не найдено по запросу «{{ search }}».{% endblocktrans %}{% else %}{% trans "Учеников пока нет. Нажмите «Добавить»." %}{% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+                                    </div>
+</div>
+
+{% include "journal/includes/pagination.html" %}
+{% endblock %}

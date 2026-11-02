@@ -1,0 +1,10 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Доступ запрещён · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+    {% trans "Сюда нельзя" as card_title %}
+    {% trans "У вашей учётной записи нет прав на эту страницу. Если она нужна для работы — попросите администратора выдать доступ." as card_message %}
+    {% include "journal/includes/error_card.html" with code="403" title=card_title message=message|default:card_message %}
+{% endblock %}

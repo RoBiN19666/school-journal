@@ -1,0 +1,927 @@
+/* Оформление журнала «Посещаемость».
+   Статические стили перенесены из journal/includes/theme.html.
+   Токены тем генерируются Django и остаются в шаблоне.
+   !important оставлен там, где правила задают размеры и вид полей,
+   списков и кнопок и должны перекрывать служебные классы Tailwind. */
+
+/* Единый шрифт журнала. Внешние шрифты не подключаем: журнал работает
+           без интернета, поэтому берём лучший из системных. */
+        html {
+            /* Стандартный системный набор шрифтов, как в Tailwind. */
+            --app-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+                Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif,
+                "Apple Color Emoji", "Segoe UI Emoji";
+        }
+
+        html,
+        body,
+        .font-sans,
+        input,
+        select,
+        textarea,
+        button,
+        optgroup {
+            font-family: var(--app-font) !important;
+        }
+
+        h1, h2, h3, h4 {
+            letter-spacing: -0.01em;
+        }
+
+    /* --- значения тем --- */
+
+    /* --- поверхности и фон --- */
+    html[data-theme] body {
+        background-color: var(--page) !important;
+        background-image: linear-gradient(170deg, var(--page) 0%, var(--soft) 60%, var(--page) 100%);
+        background-attachment: fixed;
+        color: var(--text);
+    }
+    html[data-theme] .bg-white { background-color: var(--card); }
+    html[data-theme] .bg-white\/60,
+    html[data-theme] .bg-white\/70,
+    html[data-theme] .bg-white\/90 { background-color: var(--header); }
+    html[data-theme] .bg-slate-50,
+    html[data-theme] .bg-slate-50\/40,
+    html[data-theme] .bg-slate-50\/50,
+    html[data-theme] .bg-slate-50\/60,
+    html[data-theme] .bg-slate-50\/70 { background-color: var(--soft); }
+    html[data-theme] .bg-slate-100 { background-color: var(--raise); }
+    html[data-theme] .bg-slate-200 { background-color: var(--border); }
+
+    /* --- текст --- */
+    html[data-theme] .text-slate-900,
+    html[data-theme] .text-slate-800 { color: var(--text); }
+    html[data-theme] .text-slate-700 { color: var(--strong); }
+    html[data-theme] .text-slate-600,
+    html[data-theme] .text-slate-500 { color: var(--muted); }
+    html[data-theme] .text-slate-400,
+    html[data-theme] .text-slate-300 { color: var(--faint); }
+    html[data-theme] .text-slate-200 { color: var(--border); }
+    html[data-theme] .text-slate-50 { color: var(--on-accent); }
+    html[data-theme] .hover\:text-slate-600:hover,
+    html[data-theme] .hover\:text-slate-700:hover { color: var(--text); }
+
+    /* --- границы и разделители --- */
+    html[data-theme] .border-slate-100 { border-color: var(--divider); }
+    html[data-theme] .border-slate-200,
+    html[data-theme] .border-slate-300 { border-color: var(--border); }
+    html[data-theme] .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--divider); }
+    html[data-theme] .shadow-sm { box-shadow: var(--shadow); }
+
+    /* --- строки таблиц --- */
+    html[data-theme] .odd\:bg-white:nth-child(odd) { background-color: var(--row-odd); }
+    html[data-theme] .even\:bg-slate-50\/50:nth-child(even),
+    html[data-theme] .even\:bg-slate-50\/60:nth-child(even) { background-color: var(--row-even); }
+    html[data-theme] .hover\:bg-slate-50:hover,
+    html[data-theme] .hover\:bg-slate-100:hover { background-color: var(--soft-hover); }
+    html[data-theme] table tbody tr { transition: background-color .12s ease; }
+
+    /* --- поля ввода и нативные элементы --- */
+    html[data-theme] input, html[data-theme] select, html[data-theme] textarea {
+        background-color: var(--input);
+        color: var(--text);
+        border-color: var(--border);
+        color-scheme: var(--scheme);
+    }
+    html[data-theme] ::placeholder { color: var(--faint); opacity: 1; }
+    html[data-theme] input:focus, html[data-theme] select:focus, html[data-theme] textarea:focus {
+        box-shadow: 0 0 0 3px var(--focus);
+    }
+    html[data-theme] input[type="date"],
+    html[data-theme] input[type="time"],
+    html[data-theme] input[type="datetime-local"] { background-color: var(--input); color: var(--text); }
+    html[data-theme="dark"] ::-webkit-calendar-picker-indicator,
+    html[data-theme="night"] ::-webkit-calendar-picker-indicator { filter: invert(.85); }
+    html[data-theme] ::selection { background: var(--accent); color: var(--on-accent); }
+
+    /* --- акцент и ссылки --- */
+    html[data-theme] .bg-indigo-500,
+    html[data-theme] .bg-indigo-600 { background-color: var(--indigo-solid); }
+    html[data-theme] .bg-indigo-700,
+    html[data-theme] .hover\:bg-indigo-700:hover { background-color: var(--indigo-solid-hover); }
+    html[data-theme] .text-white { color: var(--on-accent); }
+    html[data-theme] .text-indigo-50 { color: var(--indigo-on-solid); }
+    html[data-theme] .text-indigo-500,
+    html[data-theme] .text-indigo-600,
+    html[data-theme] .text-indigo-700 { color: var(--link); }
+    html[data-theme] .hover\:text-indigo-600:hover,
+    html[data-theme] .hover\:text-indigo-700:hover { color: var(--link-hover); }
+    html[data-theme] .hover\:bg-indigo-50\/50:hover,
+    html[data-theme] .hover\:bg-indigo-50\/40:hover,
+    html[data-theme] .hover\:bg-indigo-50:hover,
+    html[data-theme] .hover\:bg-indigo-100:hover { background-color: var(--indigo-bg-hover); }
+
+    /* --- синие плашки --- */
+    html[data-theme] .bg-indigo-50,
+    html[data-theme] .bg-indigo-50\/40,
+    html[data-theme] .bg-indigo-50\/50,
+    html[data-theme] .bg-indigo-50\/60,
+    html[data-theme] .bg-indigo-50\/70 { background-color: var(--indigo-bg); }
+    html[data-theme] .bg-indigo-100 { background-color: var(--indigo-bg-hover); }
+    html[data-theme] .text-indigo-800,
+    html[data-theme] .text-indigo-900,
+    html[data-theme] .text-indigo-900\/80 { color: var(--indigo-text); }
+    html[data-theme] .border-indigo-50,
+    html[data-theme] .border-indigo-100,
+    html[data-theme] .border-indigo-200,
+    html[data-theme] .border-indigo-300,
+    html[data-theme] .hover\:border-indigo-300:hover { border-color: var(--indigo-border); }
+    html[data-theme] .ring-indigo-50,
+    html[data-theme] .ring-indigo-100,
+    html[data-theme] .focus\:ring-indigo-50:focus,
+    html[data-theme] .focus\:ring-indigo-100:focus { --tw-ring-color: var(--focus); }
+    html[data-theme] .focus\:ring-indigo-500:focus,
+    html[data-theme] .focus\:border-indigo-500:focus { --tw-ring-color: var(--accent); border-color: var(--accent); }
+
+    /* --- зелёные плашки: «посетил», «уважительная» --- */
+    html[data-theme] .bg-emerald-50,
+    html[data-theme] .bg-emerald-50\/40,
+    html[data-theme] .bg-emerald-50\/70 { background-color: var(--emerald-bg); }
+    html[data-theme] .bg-emerald-100,
+    html[data-theme] .hover\:bg-emerald-100:hover { background-color: var(--emerald-bg-hover); }
+    html[data-theme] .bg-emerald-500,
+    html[data-theme] .bg-emerald-600 { background-color: var(--emerald-solid); }
+    html[data-theme] .bg-emerald-700,
+    html[data-theme] .hover\:bg-emerald-700:hover { background-color: var(--emerald-solid-hover); }
+    html[data-theme] .text-emerald-50 { color: var(--emerald-on-solid); }
+    html[data-theme] .text-emerald-500,
+    html[data-theme] .text-emerald-600,
+    html[data-theme] .text-emerald-700,
+    html[data-theme] .text-emerald-800,
+    html[data-theme] .text-emerald-900,
+    html[data-theme] .text-emerald-900\/80 { color: var(--emerald-text); }
+    html[data-theme] .border-emerald-100,
+    html[data-theme] .border-emerald-200,
+    html[data-theme] .border-emerald-300 { border-color: var(--emerald-border); }
+
+    /* --- жёлтые плашки: статусы БП, предупреждения --- */
+    html[data-theme] .bg-amber-50,
+    html[data-theme] .bg-amber-50\/60,
+    html[data-theme] .bg-amber-50\/70 { background-color: var(--amber-bg); }
+    html[data-theme] .bg-amber-100 { background-color: var(--amber-bg-hover); }
+    html[data-theme] .bg-amber-500,
+    html[data-theme] .bg-amber-600 { background-color: var(--amber-solid); }
+    html[data-theme] .bg-amber-700,
+    html[data-theme] .hover\:bg-amber-700:hover { background-color: var(--amber-solid-hover); }
+    html[data-theme] .text-amber-600,
+    html[data-theme] .text-amber-700,
+    html[data-theme] .text-amber-800,
+    html[data-theme] .text-amber-900 { color: var(--amber-text); }
+    html[data-theme] .border-amber-50,
+    html[data-theme] .border-amber-100,
+    html[data-theme] .border-amber-200,
+    html[data-theme] .border-amber-300 { border-color: var(--amber-border); }
+    html[data-theme] .ring-amber-300,
+    html[data-theme] .ring-amber-400 { --tw-ring-color: var(--amber-border); }
+    html[data-theme] .focus\:border-amber-50:focus { border-color: var(--amber-border); }
+
+    /* --- красные плашки: ошибки, удаление --- */
+    html[data-theme] .bg-rose-50 { background-color: var(--rose-bg); }
+    html[data-theme] .bg-rose-100,
+    html[data-theme] .hover\:bg-rose-50:hover { background-color: var(--rose-bg-hover); }
+    html[data-theme] .bg-rose-500,
+    html[data-theme] .bg-rose-600 { background-color: var(--rose-solid); }
+    html[data-theme] .bg-rose-700,
+    html[data-theme] .hover\:bg-rose-700:hover { background-color: var(--rose-solid-hover); }
+    html[data-theme] .text-rose-50 { color: var(--rose-on-solid); }
+    html[data-theme] .text-rose-300,
+    html[data-theme] .text-rose-500,
+    html[data-theme] .text-rose-600,
+    html[data-theme] .text-rose-700,
+    html[data-theme] .text-rose-800,
+    html[data-theme] .text-rose-900 { color: var(--rose-text); }
+    html[data-theme] .hover\:text-rose-700:hover { color: var(--rose-text); }
+    html[data-theme] .border-rose-100,
+    html[data-theme] .border-rose-200,
+    html[data-theme] .border-rose-300 { border-color: var(--rose-border); }
+
+    /* --- текст внутри цветной плашки берёт тон самой плашки, а не общий приглушённый --- */
+    html[data-theme] .bg-indigo-50 .text-indigo-500,
+    html[data-theme] .bg-indigo-50 .text-indigo-600,
+    html[data-theme] .bg-indigo-50 .text-indigo-700,
+    html[data-theme] .bg-indigo-50 .text-slate-400,
+    html[data-theme] .bg-indigo-50 .text-slate-500,
+    html[data-theme] .bg-indigo-50 .text-slate-600,
+    html[data-theme] .bg-indigo-50 .text-slate-700,
+    html[data-theme] .bg-indigo-50\/40 .text-indigo-500,
+    html[data-theme] .bg-indigo-50\/40 .text-indigo-600,
+    html[data-theme] .bg-indigo-50\/40 .text-indigo-700,
+    html[data-theme] .bg-indigo-50\/40 .text-slate-500,
+    html[data-theme] .bg-indigo-50\/40 .text-slate-600,
+    html[data-theme] .bg-indigo-50\/50 .text-indigo-500,
+    html[data-theme] .bg-indigo-50\/50 .text-indigo-600,
+    html[data-theme] .bg-indigo-50\/50 .text-indigo-700,
+    html[data-theme] .bg-indigo-50\/50 .text-slate-500,
+    html[data-theme] .bg-indigo-50\/50 .text-slate-600,
+    html[data-theme] .bg-indigo-100 .text-indigo-500,
+    html[data-theme] .bg-indigo-100 .text-indigo-600,
+    html[data-theme] .bg-indigo-100 .text-indigo-700,
+    html[data-theme] .bg-indigo-100 .text-slate-500,
+    html[data-theme] .bg-indigo-100 .text-slate-600 { color: var(--indigo-chip-text); }
+
+    html[data-theme] .bg-emerald-50 .text-emerald-500,
+    html[data-theme] .bg-emerald-50 .text-emerald-600,
+    html[data-theme] .bg-emerald-50 .text-emerald-700,
+    html[data-theme] .bg-emerald-50 .text-slate-400,
+    html[data-theme] .bg-emerald-50 .text-slate-500,
+    html[data-theme] .bg-emerald-50 .text-slate-600,
+    html[data-theme] .bg-emerald-100 .text-emerald-600,
+    html[data-theme] .bg-emerald-100 .text-emerald-700,
+    html[data-theme] .bg-emerald-100 .text-slate-500,
+    html[data-theme] .bg-emerald-100 .text-slate-600 { color: var(--emerald-chip-text); }
+
+    html[data-theme] .bg-amber-50 .text-amber-600,
+    html[data-theme] .bg-amber-50 .text-amber-700,
+    html[data-theme] .bg-amber-50 .text-amber-800,
+    html[data-theme] .bg-amber-50 .text-slate-400,
+    html[data-theme] .bg-amber-50 .text-slate-500,
+    html[data-theme] .bg-amber-50 .text-slate-600,
+    html[data-theme] .bg-amber-50\/60 .text-amber-700,
+    html[data-theme] .bg-amber-50\/70 .text-amber-700,
+    html[data-theme] .bg-amber-100 .text-amber-600,
+    html[data-theme] .bg-amber-100 .text-amber-700,
+    html[data-theme] .bg-amber-100 .text-slate-500,
+    html[data-theme] .bg-amber-100 .text-slate-600 { color: var(--amber-chip-text); }
+
+    html[data-theme] .bg-rose-50 .text-rose-500,
+    html[data-theme] .bg-rose-50 .text-rose-600,
+    html[data-theme] .bg-rose-50 .text-rose-700,
+    html[data-theme] .bg-rose-50 .text-slate-400,
+    html[data-theme] .bg-rose-50 .text-slate-500,
+    html[data-theme] .bg-rose-50 .text-slate-600,
+    html[data-theme] .bg-rose-100 .text-rose-600,
+    html[data-theme] .bg-rose-100 .text-rose-700,
+    html[data-theme] .bg-rose-100 .text-slate-500,
+    html[data-theme] .bg-rose-100 .text-slate-600 { color: var(--rose-chip-text); }
+
+    /* на плотных цветных кнопках и плашках приглушённый текст тоже светлый */
+    html[data-theme] .bg-indigo-500 .text-slate-200,
+    html[data-theme] .bg-indigo-500 .text-slate-300,
+    html[data-theme] .bg-indigo-500 .text-slate-400,
+    html[data-theme] .bg-indigo-600 .text-slate-200,
+    html[data-theme] .bg-indigo-600 .text-slate-300,
+    html[data-theme] .bg-indigo-600 .text-slate-400,
+    html[data-theme] .bg-indigo-600 .text-indigo-100,
+    html[data-theme] .bg-indigo-600 .text-indigo-200 { color: var(--indigo-on-solid); }
+
+    html[data-theme] .bg-emerald-500 .text-slate-200,
+    html[data-theme] .bg-emerald-600 .text-slate-200,
+    html[data-theme] .bg-emerald-600 .text-slate-300,
+    html[data-theme] .bg-emerald-600 .text-slate-400,
+    html[data-theme] .bg-emerald-600 .text-emerald-50,
+    html[data-theme] .bg-emerald-600 .text-emerald-100,
+    html[data-theme] .bg-emerald-600 .text-emerald-200 { color: var(--emerald-on-solid); }
+
+    html[data-theme] .bg-amber-500 .text-slate-200,
+    html[data-theme] .bg-amber-600 .text-slate-200,
+    html[data-theme] .bg-amber-600 .text-slate-300,
+    html[data-theme] .bg-amber-600 .text-slate-400,
+    html[data-theme] .bg-amber-600 .text-amber-50,
+    html[data-theme] .bg-amber-600 .text-amber-100 { color: var(--amber-on-solid); }
+
+    html[data-theme] .bg-rose-500 .text-slate-200,
+    html[data-theme] .bg-rose-600 .text-slate-200,
+    html[data-theme] .bg-rose-600 .text-slate-300,
+    html[data-theme] .bg-rose-600 .text-slate-400,
+    html[data-theme] .bg-rose-600 .text-rose-50,
+    html[data-theme] .bg-rose-600 .text-rose-100 { color: var(--rose-on-solid); }
+
+    /* --- золотая ссылка на странице «О продукте» подстраивается под тему --- */
+    html[data-theme="contrast"] .about-gold:hover .about-gold-text,
+    html[data-theme="contrast"] .about-gold:focus-visible .about-gold-text { color: #1a1300; }
+
+    /* --- мелочи интерфейса --- */
+    html[data-theme] a, html[data-theme] button {
+        transition: color .15s ease, background-color .15s ease, border-color .15s ease,
+                    box-shadow .15s ease, transform .12s ease, opacity .15s ease;
+    }
+    html[data-theme] button:active:not(:disabled),
+    html[data-theme] a.rounded-lg:active,
+    html[data-theme] a.rounded-xl:active { transform: translateY(1px); }
+    html[data-theme] button:disabled { opacity: .6; cursor: not-allowed; }
+    html[data-theme] aside nav a { transition: background-color .12s ease, color .12s ease, transform .12s ease; }
+    html[data-theme] aside nav a:hover { transform: translateX(2px); }
+    /* Заголовки групп меню. Правило на будущее: группы меню — это <p> прямо внутри
+       <nav>; они не подсвечиваются, не смещаются при наведении и остаются
+       приглушёнными в любой теме. */
+    html[data-theme] aside nav > p {
+        color: var(--faint);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        line-height: 1.2;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    html[data-theme] .rounded-2xl, html[data-theme] .rounded-xl {
+        transition: background-color .15s ease, border-color .15s ease, box-shadow .2s ease, opacity .15s ease;
+    }
+    html[data-theme] summary { transition: color .15s ease, background-color .15s ease; }
+    html[data-theme] .rounded-full { transition: background-color .15s ease, color .15s ease; }
+    html[data-theme="contrast"] .border-slate-100,
+    html[data-theme="contrast"] .border-slate-200,
+    html[data-theme="contrast"] .border-slate-300,
+    html[data-theme="contrast"] .border-indigo-200,
+    html[data-theme="contrast"] .border-emerald-200,
+    html[data-theme="contrast"] .border-amber-200,
+    html[data-theme="contrast"] .border-rose-200 { border-width: 2px; }
+
+    /* --- плавное появление содержимого после подмены страницы --- */
+    @keyframes dsh-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    body.dsh-swapped #page-content > * { animation: dsh-fade-in .16s ease-out; }
+
+    /* --- сворачивание календаря --- */
+    .calendar-body {
+        display: grid;
+        grid-template-rows: 1fr;
+        overflow: hidden;
+        transition: grid-template-rows .3s ease, opacity .25s ease;
+    }
+    .calendar-body.is-collapsed { grid-template-rows: 0fr; opacity: 0; }
+    .calendar-body.calendar-body-static { transition: none; }
+    .calendar-body > * { min-height: 0; }
+
+    /* --- мобильные телефоны и планшеты --- */
+    html { -webkit-text-size-adjust: 100%; scroll-padding-top: 5.5rem; }
+    html[data-theme] * { -webkit-tap-highlight-color: rgba(79, 70, 229, .12); }
+
+    /* Закрепляем меню на широком экране.
+       Правило на будущее: если страница длиннее экрана (создание расписания, карточки
+       учеников и т. п.), меню не уезжает вверх вместе с содержимым — оно остаётся
+       на виду, а его собственный длинный список прокручивается внутри.
+       top — высота закреплённой шапки, поэтому панель не заезжает под неё. */
+    @media (min-width: 1024px) {
+        html[data-theme] aside {
+            position: sticky;
+            /* Встаём под всей стопкой закреплённых плашек: её высоту считает
+               скрипт, поэтому меню не заезжает под шапку и панель периода. */
+            top: calc(var(--app-top-stack, 5.5rem) + 0.5rem);
+            align-self: flex-start;
+            max-height: calc(100vh - var(--app-top-stack, 5.5rem) - 1rem);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+    }
+
+    @media (max-width: 1023px) {
+        /* Поля не меньше 16px: иначе iOS приближает страницу при вводе. */
+        html[data-theme] input, html[data-theme] select, html[data-theme] textarea {
+            font-size: 16px;
+        }
+        
+        /* Панель разделов превращается в выезжающее меню.
+           Правило на будущее: панель прокручивается внутри себя, лежит НИЖЕ шапки
+           по слоям и начинается под ней — высоту шапки считает скрипт
+           (--app-header-height), поэтому меню никогда не накрывает шапку. */
+        html[data-theme] aside {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            /* Слой: выше закреплённых панелей (надпись демо-режима 35, панель
+               периода 34), но ниже шапки (40) — поэтому панели не «перерезают» меню,
+               а шапка остаётся поверх него. */
+            z-index: 38;
+            width: min(20rem, 86vw);
+            margin: 0;
+            /* Отступ только под шапкой: панели меню не перекрывают
+               (меню лежит выше них), поэтому большой отступ не нужен. */
+            padding: calc(var(--app-header-height, 4rem) + 0.75rem) .75rem
+                calc(1rem + env(safe-area-inset-bottom));
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            background: var(--page);
+            transform: translateX(-102%);
+            transition: transform .22s ease, box-shadow .22s ease;
+            box-shadow: 0 0 0 100vmax rgba(15, 23, 42, 0);
+        }
+
+        html[data-theme][data-mobile-nav-open] aside {
+            transform: none;
+            box-shadow: 0 0 0 100vmax rgba(15, 23, 42, .45);
+        }
+        /* Запрет прокрутки страницы при открытом меню не используем: правило
+           overflow: hidden у html и body ломает закреплённую шапку — она уезжает
+           вверх, и меню оказывается поверх неё. Меню и так лежит выше панелей. */
+        html[data-theme] aside nav { border: 1px solid var(--border); }
+        /* Мобильное меню держим в углу, чтобы не мешало содержимому. */
+        html[data-theme] main, html[data-theme] #page-content { min-width: 0; }
+    }
+
+    @media (max-width: 767px) {
+        /* Пальцем попадать проще: крупные цели нажатия. */
+        html[data-theme] aside nav a, html[data-theme] aside nav button { min-height: 44px; }
+        html[data-theme] button, html[data-theme] a.rounded-lg, html[data-theme] a.rounded-xl {
+            min-height: 40px;
+        }
+        html[data-theme] table { font-size: 13px; }
+        /* Кнопки сохранения прилипают к низу экрана. */
+        html[data-theme] .mobile-actions {
+            position: sticky;
+            bottom: 0;
+            z-index: 12;
+            margin: .75rem -1rem 0;
+            padding: .6rem 1rem calc(.6rem + env(safe-area-inset-bottom));
+            background: var(--card);
+            border-top: 1px solid var(--border);
+        }
+        html[data-theme] .mobile-actions > * { flex: 1 1 auto; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html[data-theme] aside { transition: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .calendar-body { transition: none; }
+        html[data-theme] *, body.dsh-swapped #page-content > * { animation: none !important; transition: none !important; }
+    }
+
+        /* Одинаковая высота, скругления и свой вид списков.
+           !important — потому что Tailwind подгружается после стилей журнала. */
+        input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
+        select,
+        textarea {
+            height: 2.5rem;
+            min-height: 2.5rem;
+            border-radius: 0.75rem !important;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+
+        /* Высоту textarea не фиксируем через !important: браузер записывает
+           новую высоту в style при растягивании за нижний край, а !important
+           её перебивает — поле нельзя было бы увеличить. Высоту задаёт число
+           строк виджета (rows), а min-height только не даёт полю схлопнуться:
+           раньше здесь стояло 5rem, и rows у виджета ни на что не влиял. */
+        textarea {
+            height: auto;
+            min-height: 2.5rem !important;
+        }
+
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            font-size: 0.875rem !important;
+            line-height: 1.25rem !important;
+            background-color: #ffffff !important;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+            background-position: right 0.75rem center !important;
+            background-repeat: no-repeat !important;
+            background-size: 1rem 1rem !important;
+            padding: 0 2.5rem 0 0.75rem !important;
+            cursor: pointer;
+        }
+
+        button,
+        input[type="submit"],
+        a.rounded-lg {
+            border-radius: 0.75rem !important;
+            transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease,
+                transform 0.15s ease;
+        }
+
+        button:hover,
+        input[type="submit"]:hover {
+            transform: translateY(-1px);
+        }
+
+        button:active,
+        input[type="submit"]:active {
+            transform: translateY(0);
+        }
+
+        select:hover {
+            background-color: #f8fafc !important;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #6366f1 !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+            outline: none !important;
+        }
+
+        /* Кнопки рядом с полями — той же высоты, что и поля. */
+        button[type="submit"],
+        input[type="submit"] {
+            height: 2.5rem !important;
+            min-height: 2.5rem !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        /* Центрируем только обычные кнопки. Пункты меню и кнопки с текстом слева
+           не трогаем: у них своё выравнивание. */
+        button[type="submit"]:not([class*="text-left"]),
+        input[type="submit"]:not([class*="text-left"]) {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        [data-select-toggle],
+        [data-date-toggle] {
+            border-radius: 0.75rem !important;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Полные поля — одной высоты с полями ввода; в шапке и фильтрах остаются тонкими. */
+        [data-select-toggle]:not([data-compact]),
+        [data-date-toggle]:not([data-compact]) {
+            height: 2.5rem !important;
+            min-height: 2.5rem !important;
+        }
+
+        select.sr-only {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
+        }
+
+        select::-ms-expand {
+            display: none;
+        }
+
+        select:disabled,
+        input:disabled {
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+
+        select option {
+            color: #0f172a;
+            background: #ffffff;
+        }
+
+/* Кнопка выбора файла — в цветах темы, а не системная синяя. */
+input[type="file"]::file-selector-button {
+    font: inherit;
+    margin-right: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-radius: 0.75rem;
+    background: var(--accent);
+    color: var(--on-accent);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background: var(--accent-hover);
+}
+
+input[type="file"]::-webkit-file-upload-button {
+    font: inherit;
+    margin-right: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-radius: 0.75rem;
+    background: var(--accent);
+    color: var(--on-accent);
+    cursor: pointer;
+}
+
+input[type="file"] {
+    height: auto !important;
+    min-height: 2.5rem !important;
+    padding: 0.25rem !important;
+    color: var(--text);
+}
+
+/* Всплывающие уведомления: появляются справа и сами уходят через несколько секунд. */
+@keyframes toast-in {
+    from { opacity: 0; transform: translateX(1rem); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes toast-out {
+    to { opacity: 0; transform: translateX(1rem); visibility: hidden; }
+}
+
+[data-toast] {
+    animation: toast-in 0.25s ease-out, toast-out 0.4s ease-in 6s forwards;
+}
+
+/* Если анимации отключены в системе, уведомление просто исчезнет. */
+@media (prefers-reduced-motion: reduce) {
+    [data-toast] {
+        animation: toast-out 0.3s ease-in 8s forwards;
+    }
+}
+
+/* Сворачиваемые блоки: высоту анимирует скрипт, стрелка поворачивается синхронно. */
+details > summary {
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+}
+
+details > summary::-webkit-details-marker {
+    display: none;
+}
+
+details > summary::before {
+    content: "\25B8";
+    display: inline-block;
+    margin-right: 0.4rem;
+    color: var(--text-muted, #64748b);
+    transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+details[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    details > summary::before {
+        transition: none;
+    }
+}
+    /* Стопка закреплённых панелей: шапка, надпись демо-режима, панель периода.
+       Высоты шапки и надписи считает скрипт, поэтому панели всегда встают
+       друг под друга и не перекрывают содержимое при прокрутке. */
+    html[data-theme] [data-demo-banner] {
+        position: sticky;
+        top: var(--app-header-height, 4rem);
+        z-index: 35;
+    }
+
+    html[data-theme] #period-bar {
+        position: sticky;
+        top: calc(var(--app-header-height, 4rem) + var(--app-demo-height, 0px));
+        z-index: 34;
+    }
+
+    /* На широком экране панель периода тоже закреплена, но ниже шапки. */
+    @media (min-width: 1024px) {
+        html[data-theme] #period-bar {
+            position: sticky;
+        }
+    }
+    /* Меню пользователя — выше всех закреплённых плашек.
+       Слои по убыванию: уведомления (50) → меню пользователя (45) → шапка (40) →
+       выезжающее меню (38) → надпись демо-режима (35) → панель периода (34). */
+    html[data-theme] [data-user-menu-panel] {
+        z-index: 45 !important;
+    }
+/* Шапка закреплена сверху и лежит выше закреплённых плашек и выезжающего меню.
+   Слой задан на ВСЕХ экранах: в широком режиме выпадающее меню пользователя
+   находится внутри шапки, поэтому без этого правила оно пряталось под плашками. */
+html[data-theme] header {
+    position: sticky;
+    top: 0;
+    z-index: 40 !important;
+    background-color: var(--header);
+}
+    /* На телефоне панель периода занимает меньше места: подписи и диапазон дат скрыты,
+       остаются только значения — основное содержимое страницы видно сразу.
+       Правило на будущее: новые элементы панели помечайте data-period-label,
+       если их можно прятать на узком экране. */
+    @media (max-width: 1023px) {
+        html[data-theme] [data-period-label],
+        html[data-theme] [data-period-range],
+        html[data-theme] [data-period-status] {
+            display: none;
+        }
+        html[data-theme] #period-bar > div {
+            gap: 0.375rem;
+            padding-top: 0.375rem;
+            padding-bottom: 0.375rem;
+        }
+    }
+    /* Таблица отметок на телефоне: помещается по ширине, без горизонтальной прокрутки.
+       Правило на будущее: столбцы отметок узкие и фиксированной ширины,
+       имя ученика переносится по словам, подписи столбцов — короткие. */
+    @media (max-width: 1023px) {
+        html[data-theme] .attendance-table {
+            table-layout: fixed;
+            width: 100%;
+        }
+        html[data-theme] .attendance-table th,
+        html[data-theme] .attendance-table td {
+            padding: 0.5rem 0.25rem;
+            font-size: 12px;
+        }
+        html[data-theme] .attendance-table .attendance-status {
+            width: 3.25rem;
+        }
+        html[data-theme] .attendance-table .attendance-status input[type="radio"] {
+            margin: 0;
+            height: 1rem;
+            width: 1rem;
+        }
+        html[data-theme] .attendance-table .attendance-name {
+            word-break: break-word;
+            white-space: normal;
+            /* Небольшой отступ слева, чтобы текст не лип к краю карточки. */
+            padding-left: 0.75rem;
+        }
+        html[data-theme] .attendance-table th {
+            letter-spacing: 0;
+            text-transform: none;
+            font-weight: 600;
+        }
+    }
+/* На телефоне широкие таблицы больше не растягивают страницу.
+   Раньше у таблиц была жёсткая минимальная ширина (до 900 px), из-за этого браузер
+   уменьшал всю страницу: текст становился мелким, а справа появлялась пустая полоса.
+   Теперь таблицы сжимаются по экрану, а длинные слова переносятся. */
+@media (max-width: 1023px) {
+    /* Таблицы сохраняют читаемую ширину и прокручиваются ВНУТРИ своей карточки
+       (у обёртки overflow-x-auto). Сжимать их до ширины экрана нельзя: тогда
+       буквы в узких столбцах встают по одной в строке. */
+
+    /* Карточки и колонки сетки не растягиваются содержимым таблиц. */
+    html[data-theme] .grid > *,
+    html[data-theme] .flex > * {
+        min-width: 0;
+    }
+}
+/* Горизонтальный выход за экран обрезаем только на уровне окна.
+   Содержимому (main) обрезку задавать нельзя: она режет всплывающие панели —
+   календарь и списки выбора — по правой границе содержимого.
+   Используется clip, а не hidden: hidden создаёт область прокрутки и ломает
+   закреплённые шапку и меню, а clip просто не даёт содержимому вылезать
+   за пределы экрана — поэтому пустой полосы справа не появляется. */
+html[data-theme],
+html[data-theme] body {
+    overflow-x: clip;
+}
+/* Текст в кнопках по центру и по вертикали, и по горизонтали.
+   У обычной кнопки текст стоит по базовой линии шрифта и кажется смещённым вверх. */
+html[data-theme] button:not([data-plain-button]):not([class*="flex"]):not([class*="grid"]):not([class*="block"]),
+html[data-theme] input[type="submit"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.25;
+}
+
+/* Ползунки прокрутки в цветах темы.
+   Цвета берутся из токенов темы, поэтому ползунки подходят к любой из пяти тем.
+   Ползунок — средний тон (--muted), при наведении — акцент темы; дорожка прозрачная,
+   чтобы полоса не выглядела отдельной серой лентой. */
+html[data-theme] {
+    --scroll-track: transparent;
+    --scroll-thumb: var(--muted);
+    --scroll-thumb-hover: var(--indigo-solid);
+}
+
+/* Chrome, Edge, Safari: скруглённые ползунки с отступом от края.
+   Важно: как только заданы стандартные scrollbar-color и scrollbar-width,
+   браузер перестаёт применять эти правила — поэтому они разделены по поддержке. */
+@supports selector(::-webkit-scrollbar) {
+    html[data-theme] *::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+        background: transparent;
+    }
+
+    html[data-theme] *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    html[data-theme] *::-webkit-scrollbar-thumb {
+        background-color: var(--scroll-thumb);
+        border: 2px solid transparent;
+        border-radius: 999px;
+        background-clip: padding-box;
+    }
+
+    html[data-theme] *::-webkit-scrollbar-thumb:hover {
+        background-color: var(--scroll-thumb-hover);
+    }
+
+    html[data-theme] *::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+
+    /* Тоньше на телефоне: ползунок не отнимает место у содержимого. */
+    @media (max-width: 1023px) {
+        html[data-theme] *::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+    }
+}
+
+/* Firefox: у него свои стандартные свойства. */
+@supports not selector(::-webkit-scrollbar) {
+    html[data-theme] * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+    }
+}
+/* Столбики графика входов. Высота задаётся здесь, а не классами утилит:
+   иначе процентная высота столбика считается от неопределённой высоты
+   и столбики превращаются в полоски в 2 пикселя. */
+html[data-theme] .dsh-chart {
+    display: flex;
+    align-items: flex-end;
+    height: 8rem;
+}
+
+html[data-theme] .dsh-chart-bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+}
+/* Список учебных годов на странице «Учебные периоды».
+   Годов может быть много (по одному на каждый учебный год), поэтому список
+   ограничен примерно семью строками и прокручивается внутри себя — иначе он
+   растягивал бы карточку вниз. При 3–5 годах прокрутки не появляется: высота
+   списка меньше предела, и ползунок не показывается.
+   !important — потому что Tailwind подгружается после стилей журнала. */
+html[data-theme] [data-year-list] {
+    max-height: 18rem !important;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+/* Обёртка таблицы полугодий. Она нужна только на узком экране, где таблица
+   не помещается по ширине. На широком экране прокрутка не нужна: браузер
+   показывал в ней вертикальный ползунок, хотя места хватало. */
+@media (min-width: 1024px) {
+    html[data-theme] .periods-table-wrap {
+        overflow: visible;
+        max-height: none;
+    }
+}
+/* Подсветка полей ввода в цветах темы.
+   В разметке у полей остались классы оформления с фиолетовым цветом, поэтому
+   при любой теме обводка была фиолетовой. Здесь она берётся из токенов темы:
+   --accent — рамка, --focus — мягкое свечение вокруг. */
+html[data-theme] input:not([type="checkbox"]):not([type="radio"]):focus,
+html[data-theme] select:focus,
+html[data-theme] textarea:focus,
+html[data-theme] [data-select-toggle]:focus,
+html[data-theme] [data-period-toggle]:focus,
+html[data-theme] [data-date-toggle]:focus {
+    border-color: var(--accent) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px var(--focus) !important;
+}
+
+/* Мягкая подсветка при наведении на поля выбора. */
+html[data-theme] [data-select-toggle]:hover,
+html[data-theme] [data-period-toggle]:hover,
+html[data-theme] [data-date-toggle]:hover {
+    border-color: var(--accent) !important;
+}
+
+/* --- Переключатель языка (Русский / English) ---
+   Правило на будущее: переключатель языка — компактный элемент шапки, а не
+   форма. Общие правила полей и кнопок выше задают высоту 2,5rem и отступы,
+   из-за которых он вылезал бы из шапки, поэтому здесь он возвращается к
+   маленькому размеру. Разметка помечена data-language-switcher;
+   на узком экране длинные подписи заменяются на RU / EN. */
+html[data-theme] form[data-language-switcher] button,
+html[data-theme] [data-language-switcher] button {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0.125rem 0.5rem !important;
+    border-radius: 9999px !important;
+    font-size: 0.6875rem !important;
+    line-height: 1.4 !important;
+}
+
+html[data-theme] form[data-language-switcher] button:hover,
+html[data-theme] [data-language-switcher] button:hover {
+    transform: none;
+}
+
+@media (max-width: 767px) {
+    html[data-theme] [data-language-switcher] button {
+        padding: 0.125rem 0.4rem !important;
+    }
+}
+
+@media (max-width: 640px) {
+    /* На телефоне две подписи «Русский» и «English» не помещаются рядом с
+       меню и названием журнала: показываем короткие RU / EN. */
+    html[data-theme] [data-language-switcher] [data-language-long] {
+        display: none;
+    }
+    html[data-theme] [data-language-switcher] [data-language-short] {
+        display: inline;
+    }
+}
+
+/* Элементы шапки — постоянной высоты: шапка не «прыгает» при переключении языка.
+   Переключателю языка запрещено переноситься на вторую строку. */
+html[data-theme] header [data-language-switcher] {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+/* Кнопка входа и меню пользователя — той же высоты, что и переключатель языка:
+   на телефоне общее правило роста кнопок до 40 px больше не раздувает шапку. */
+html[data-theme] header [data-auth-action] {
+    min-height: 2.25rem;
+}

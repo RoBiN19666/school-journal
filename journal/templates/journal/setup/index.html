@@ -1,0 +1,159 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'ru' }}" data-theme="{{ theme }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }} · {{ app_product|default:_("Электронный журнал") }}</title>
+    <script src="{% static 'journal/vendor/tailwind.js' %}"></script>
+    {% include "journal/includes/theme.html" %}
+    {% if app_favicon_url %}
+        <link rel="icon" href="{{ app_favicon_url }}">
+    {% endif %}
+</head>
+<body class="min-h-screen bg-slate-100 px-4 py-10 text-slate-800 antialiased">
+    <div class="mx-auto w-full max-w-4xl">
+
+        {# Выбор языка: POST на штатный set_language, текущая страница уходит в next. #}
+        {% get_current_language as CURRENT_LANG %}
+        <div class="mb-4 flex justify-end">
+            <form method="post" action="{% url 'set_language' %}" data-language-switcher
+                  class="language-switcher flex items-center gap-0.5 rounded-full border border-slate-200 bg-white p-0.5 shadow-sm">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" name="language" value="ru" title="{% trans 'Русский' %}"
+                        class="grid place-items-center rounded-full px-2.5 py-1 text-xs font-medium transition {% if CURRENT_LANG == 'ru' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %}">
+                    <span data-language-long>{% trans "Русский" %}</span><span data-language-short hidden>RU</span>
+                </button>
+                <button type="submit" name="language" value="en" title="English"
+                        class="grid place-items-center rounded-full px-2.5 py-1 text-xs font-medium transition {% if CURRENT_LANG == 'en' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %}">
+                    <span data-language-long>English</span><span data-language-short hidden>EN</span>
+                </button>
+            </form>
+        </div>
+
+        <div class="mb-6 flex flex-col items-center gap-2 text-center">
+            <div class="grid h-12 w-12 place-items-center overflow-hidden rounded-2xl text-lg font-semibold text-white{% if not app_logo_url %} bg-indigo-600{% endif %}">
+                {% include "journal/includes/brand_logo.html" with logo_radius="rounded-2xl" %}
+            </div>
+            <h1 class="text-xl font-semibold">{% trans "Первый запуск журнала" %}</h1>
+            <p class="max-w-2xl text-sm text-slate-500">
+                {% blocktrans %}Журнал новый и пока пустой. Заполните два шага — и можно работать:
+                создайте главного администратора и задайте название журнала.{% endblocktrans %}
+            </p>
+        </div>
+
+        {% if messages %}
+            <div class="pointer-events-none fixed right-4 top-4 z-50 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-2">
+                {% for message in messages %}
+                    <div data-toast
+                         class="flex items-start gap-2 rounded-xl border bg-white px-3 py-2.5 text-sm shadow-lg {% if message.tags == 'error' %}border-rose-200 text-rose-800{% elif message.tags == 'warning' %}border-amber-200 text-amber-900{% elif message.tags == 'success' %}border-emerald-200 text-emerald-800{% else %}border-slate-200 text-slate-700{% endif %}">
+                        <span class="mt-0.5 shrink-0">{% if message.tags == 'error' %}⚠{% elif message.tags == 'warning' %}⏳{% elif message.tags == 'success' %}✓{% else %}ⓘ{% endif %}</span>
+                        <span class="min-w-0 flex-1">{{ message }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="space-y-6" novalidate>
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+
+                {# Шаг 1: главный администратор — единственная обязательная часть. #}
+                <div class="rounded-2xl bg-white p-6 shadow-sm">
+                    <h2 class="text-lg font-semibold">{% trans "1. Главный администратор" %}</h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        {% blocktrans %}Это владелец журнала: полный доступ ко всем разделам.
+                        Этим логином вы будете входить в журнал.{% endblocktrans %}
+                    </p>
+
+                    {% if form.non_field_errors %}
+                        <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="mt-4 space-y-4">
+                        {% for field in form %}
+                            <div>
+                                <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                                    {{ field.label }}{% if field.field.required %} *{% endif %}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {# Шаг 2: внешний вид — то же оформление, что в разделе «Кастомизация». #}
+                <div class="rounded-2xl bg-white p-6 shadow-sm">
+                    <h2 class="text-lg font-semibold">{% trans "2. Название и знаки журнала" %}</h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        {% blocktrans %}Показываются на всех страницах журнала и на странице входа.
+                        Потом это можно изменить в разделе «Кастомизация».{% endblocktrans %}
+                    </p>
+
+                    {% if site_form.non_field_errors %}
+                        <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                            {{ site_form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="mt-4 space-y-4">
+                        {% for field in site_form %}
+                            <div>
+                                <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                                    {{ field.label }}{% if field.field.required %} *{% endif %}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <div data-logo-preview-frame class="grid h-12 w-12 place-items-center overflow-hidden rounded-2xl text-sm font-semibold text-white{% if not app_logo_url %} bg-indigo-600{% endif %}">
+                            {% include "journal/includes/brand_logo.html" with logo_radius="rounded-2xl" %}
+                        </div>
+                        <p class="min-w-0 flex-1 text-xs text-slate-500">
+                            {% blocktrans %}Так значок выглядит сейчас.
+                            Принимаются только изображения PNG, JPG, WEBP или ICO размером до 1 МБ.
+                            Формат SVG запрещён — в нём может быть вредоносный код.{% endblocktrans %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center gap-3 rounded-2xl bg-white p-6 shadow-sm sm:flex-row sm:justify-between">
+                <p class="text-xs text-slate-500">
+                    {% blocktrans %}После нажатия кнопки вы сразу войдёте в журнал под созданной учётной записью.
+                    Новые сотрудники, ученики и расписание добавляются уже внутри журнала.{% endblocktrans %}
+                </p>
+                <button type="submit"
+                        class="w-full shrink-0 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 sm:w-auto">
+                    {% trans "Завершить настройку" %}
+                </button>
+            </div>
+        </form>
+
+        <p class="mt-6 text-center text-xs text-slate-400">
+            {{ app_product|default:_("Электронный журнал") }} · {{ app_author }} ·
+            <a href="{% url 'about' %}" class="transition hover:text-slate-600">{% trans "о продукте" %}</a>
+            · <a href="{% url 'faq' %}" class="transition hover:text-slate-600">{% trans "справка" %}</a>
+        </p>
+    </div>
+    {% include "journal/includes/logo_crop.html" %}
+</body>
+</html>

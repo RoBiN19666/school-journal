@@ -1,0 +1,399 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'ru' }}" data-theme="{{ theme }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{% block title %}{% trans "Электронный журнал" %}{% endblock %}</title>
+    {# Версия нужна каркасу: после обновления старый скрипт сам перезагрузит страницу. #}
+    {# Версия нужна для проверки устаревшей страницы при динамических переходах. #}
+        
+    <script src="{% static 'journal/vendor/tailwind.js' %}"></script>
+    {% include "journal/includes/theme.html" %}
+    {% if app_favicon_url %}
+        <link rel="icon" href="{{ app_favicon_url }}">
+    {% endif %}
+</head>
+<body class="flex min-h-screen flex-col bg-slate-100 text-slate-800 antialiased">
+<header class="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
+        <div class="flex items-center gap-3">
+            {% if user.is_authenticated %}
+                <button type="button" data-mobile-nav-toggle aria-label="{% trans 'Меню разделов' %}"
+                        aria-expanded="false"
+                        class="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-base text-slate-600 transition hover:bg-slate-100 lg:hidden">
+                    ☰
+                </button>
+            {% endif %}
+            {% if user.is_teacher %}{% url 'teacher_dashboard' as logo_home %}{% else %}{% url 'dashboard' as logo_home %}{% endif %}
+            <a href="{{ logo_home }}" aria-label="{% trans 'На сводку' %}" title="{% trans 'На сводку' %}"
+               class="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-semibold text-white transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300{% if not app_logo_url %} bg-indigo-600{% endif %}">{% include "journal/includes/brand_logo.html" with logo_radius="rounded-xl" %}</a>
+            <div>
+                <p class="text-sm font-semibold leading-tight">{% trans "Электронный журнал" %}</p>
+                <p class="text-xs text-slate-500">{{ app_fund }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            {# Выбор языка: POST на штатный set_language, текущая страница уходит в next. #}
+            {% get_current_language as CURRENT_LANG %}
+            <form method="post" action="{% url 'set_language' %}" data-language-switcher
+                  class="language-switcher inline-flex items-center gap-0.5 rounded-full border border-slate-200 bg-slate-50 p-0.5">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" name="language" value="ru" title="{% trans 'Русский' %}"
+                        class="grid place-items-center rounded-full px-2 py-0.5 text-[11px] font-medium transition {% if CURRENT_LANG == 'ru' %}bg-white text-slate-800 shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %}">
+                    <span data-language-long>{% trans "Русский" %}</span><span data-language-short hidden>RU</span>
+                </button>
+                <button type="submit" name="language" value="en" title="English"
+                        class="grid place-items-center rounded-full px-2 py-0.5 text-[11px] font-medium transition {% if CURRENT_LANG == 'en' %}bg-white text-slate-800 shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %}">
+                    <span data-language-long>English</span><span data-language-short hidden>EN</span>
+                </button>
+            </form>
+            {% if user.is_authenticated %}
+                <div class="relative" data-user-menu>
+                    <button type="button" data-user-menu-toggle data-auth-action
+                            class="flex items-center gap-2 rounded-xl px-2 py-1 text-right transition hover:bg-slate-100">
+                        <span class="hidden sm:block">
+                            <span class="block text-xs font-medium leading-tight">{{ user.full_name }}</span>
+                            <span class="block text-[11px] text-slate-500">{{ user.get_role_display }}</span>
+                        </span>
+                        <span class="grid h-7 w-7 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">
+                            {{ user.first_name|default:user.username|slice:":1"|upper }}
+                        </span>
+                        <span data-user-menu-caret class="text-slate-400 transition-transform duration-150">▾</span>
+                    </button>
+                    <div data-user-menu-panel
+                         class="invisible absolute right-0 z-30 mt-2 w-56 origin-top-right scale-95 rounded-2xl border border-slate-200 bg-white py-1.5 opacity-0 shadow-lg transition duration-150 ease-out"
+                         data-open-classes="visible scale-100 opacity-100">
+                        <a href="{% url 'profile' %}"
+                           class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                            {% blocktrans %}<span class="text-slate-400">◍</span> Мои данные и оформление{% endblocktrans %}
+                        </a>
+                        <div class="my-1.5 border-t border-slate-100"></div>
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="justify-start flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50">
+                                {% blocktrans %}<span class="text-rose-300">⏻</span> Выйти{% endblocktrans %}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% else %}
+                <a href="{% url 'login' %}" data-auth-action
+                   class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    {% trans "Войти" %}
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</header>
+
+{% if demo_active %}
+    <div data-demo-banner class="border-b border-amber-200 bg-amber-50">
+        <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs text-amber-800 sm:px-6">
+            <span>
+                {% trans "Демонстрационный режим: вы вошли как" %}
+                {% if demo_role == 'methodist' %}{% trans "методист УМО" %}{% else %}{% trans "преподаватель" %}{% endif %}
+                {% trans "рабочий журнал не затрагивается." %}
+            </span>
+            <span class="flex items-center gap-3">
+                {% if demo_role == 'methodist' %}
+                    <a href="{% url 'demo_login' 'teacher' %}" class="font-medium underline">{% trans "Войти как преподаватель" %}</a>
+                {% else %}
+                    <a href="{% url 'demo_login' 'methodist' %}" class="font-medium underline">{% trans "Войти как методист" %}</a>
+                {% endif %}
+                <a href="{% url 'demo_exit' %}" class="font-medium underline">{% trans "Выйти из демонстрации" %}</a>
+            </span>
+        </div>
+    </div>
+{% endif %}
+
+{% if active_year and user.is_authenticated %}
+    <div id="period-bar" class="border-b border-slate-200 bg-white">
+            <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-2 sm:px-6">
+        <div class="relative" data-period-picker>
+                    <button type="button" data-period-toggle aria-expanded="false"
+                            class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 transition hover:bg-slate-50">
+                        <span class="text-slate-400" data-period-label>{% trans "учебный год" %}</span>
+                        <span class="font-medium">{{ active_year.title|default:_("не выбран") }}</span>
+                        <span data-period-caret class="text-slate-400 transition-transform duration-150">▾</span>
+                    </button>
+                    <div data-period-panel
+                         class="invisible absolute left-0 z-30 mt-2 max-h-72 w-56 origin-top-left scale-95 overflow-y-auto rounded-2xl border border-slate-200 bg-white py-1.5 opacity-0 shadow-lg transition duration-150 ease-out"
+                         data-open-classes="visible scale-100 opacity-100">
+                        <p class="px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                            {% trans "Учебный год" %}
+                        </p>
+                        {% for year in academic_years %}
+                            <a href="{% url 'period_switch' %}?year={{ year.pk }}&next={{ request.get_full_path|urlencode }}"
+                               data-year-item data-search-text="{{ year.title }}"
+                               class="flex items-center justify-between gap-2 px-3 py-1.5 text-xs transition hover:bg-slate-50 {% if active_year and year.pk == active_year.pk %}bg-indigo-50 font-medium text-indigo-700{% else %}text-slate-700{% endif %}">
+                                <span>{{ year.title }}</span>
+                            </a>
+                        {% endfor %}
+                        <p data-year-empty class="hidden px-3 py-2 text-xs text-slate-500">
+                            {% trans "Ничего не найдено" %}
+                        </p>
+                    </div>
+                </div>
+                <div class="relative" data-period-picker>
+                    <button type="button" data-period-toggle aria-expanded="false"
+                            class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 transition hover:bg-slate-50">
+                        <span class="text-slate-400" data-period-label>{% trans "полугодие" %}</span>
+                        <span class="font-medium">{{ active_term.title|default:_("не выбрано") }}</span>
+                        <span class="text-slate-400" data-period-range>{{ active_term.date_range }}</span>
+                        <span data-period-caret class="text-slate-400 transition-transform duration-150">▾</span>
+                    </button>
+                    <div data-period-panel
+                         class="invisible absolute left-0 z-30 mt-2 max-h-72 w-72 origin-top-left scale-95 overflow-y-auto rounded-2xl border border-slate-200 bg-white py-1.5 opacity-0 shadow-lg transition duration-150 ease-out"
+                         data-open-classes="visible scale-100 opacity-100">
+                        <p class="px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                            {% trans "Полугодие" %}
+                        </p>
+                        {% for term in active_year_terms %}
+                            <a href="{% url 'period_switch' %}?year={{ active_year.pk }}&term={{ term.pk }}&next={{ request.get_full_path|urlencode }}"
+                               class="flex items-center justify-between gap-2 px-3 py-1.5 text-xs transition hover:bg-slate-50 {% if active_term and term.pk == active_term.pk %}bg-indigo-50 font-medium text-indigo-700{% else %}text-slate-700{% endif %}">
+                                <span>{{ term.title }}</span>
+                                <span class="text-slate-400">{{ term.date_range }}</span>
+                            </a>
+                        {% empty %}
+                            <p class="px-3 py-2 text-xs text-slate-500">{% trans "У года нет полугодий" %}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+    
+                {% if not user.is_teacher %}
+                <div class="relative" data-period-picker>
+                    <button type="button" data-period-toggle aria-expanded="false"
+                            class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 transition hover:bg-slate-50">
+                        <span class="text-slate-400" data-period-label>{% trans "адрес" %}</span>
+                        <span class="font-medium">{{ active_branch.name|default:_("не выбран") }}</span>
+                        <span data-period-caret class="text-slate-400 transition-transform duration-150">▾</span>
+                    </button>
+                    <div data-period-panel
+                         class="invisible absolute left-0 z-30 mt-2 max-h-72 w-64 origin-top-left scale-95 overflow-y-auto rounded-2xl border border-slate-200 bg-white py-1.5 opacity-0 shadow-lg transition duration-150 ease-out"
+                         data-open-classes="visible scale-100 opacity-100">
+                        <p class="px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                            {% trans "Адрес" %}
+                        </p>
+                        {% for branch in branches %}
+                            <a href="{% url 'period_switch' %}?branch={{ branch.pk }}&next={{ request.get_full_path|urlencode }}"
+                               class="flex items-center justify-between gap-2 px-3 py-1.5 text-xs transition hover:bg-slate-50 {% if active_branch and branch.pk == active_branch.pk %}bg-indigo-50 font-medium text-indigo-700{% else %}text-slate-700{% endif %}">
+                                <span>{{ branch.name }}</span>
+                                {% if active_branch and branch.pk == active_branch.pk %}
+                                    <span class="text-indigo-500">✓</span>
+                                {% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% if active_term %}
+                    <span data-period-status class="rounded-full px-2 py-0.5 text-xs {% if active_term_is_current %}bg-emerald-50 text-emerald-700{% else %}bg-amber-50 text-amber-800{% endif %}">
+                        {% if active_term_is_current %}{% trans "текущая по дате" %}{% else %}{% trans "выбрана вручную" %}{% endif %}
+                    </span>
+                    {% if not active_term_is_current and current_term %}
+                        <a href="{% url 'period_switch' %}?term={{ current_term.pk }}&next={{ request.get_full_path|urlencode }}"
+                           class="flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100">
+                            {% blocktrans %}<span>↺</span> к текущему периоду{% endblocktrans %}
+                        </a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+<div class="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 pt-6 sm:px-6 lg:flex-row">
+    <aside class="w-full shrink-0 lg:w-60">
+        <div data-mobile-nav-backdrop hidden></div>
+        <nav id="side-nav" class="space-y-1 rounded-2xl bg-white p-3 shadow-sm">
+            {% if not user.is_authenticated %}
+                <a href="{% url 'login' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+                    {% trans "Авторизация" %}
+                </a>
+                {% if demo_mode %}
+                    <a href="{% url 'demo' %}"
+                       class="block rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+                        {% trans "Демо-режим" %}
+                    </a>
+                {% endif %}
+            {% endif %}
+            {# Рабочие разделы преподавателя — первыми. #}
+            {% if user.is_teacher %}
+                <p class="px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                    {% trans "Занятия" %}
+                </p>
+                <a href="{% url 'teacher_dashboard' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if request.resolver_match.url_name == 'teacher_dashboard' or request.resolver_match.url_name == 'attendance' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Мои занятия" %}
+                </a>
+                <a href="{% url 'teacher_week' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if request.resolver_match.url_name == 'teacher_week' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "По неделям: темы и часы" %}
+                </a>
+            {% endif %}
+            {# Основное: учёт учеников, преподавателей, программ, расписания и периодов. #}
+            {% if user.is_staff_member %}
+                <div class="my-2 border-t border-slate-100"></div>
+                <p class="px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                    {% trans "Основное" %}
+                </p>
+                <a href="{% url 'dashboard' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if request.resolver_match.url_name == 'dashboard' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Сводка" %}
+                </a>
+                <a href="{% url 'students' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'student' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Ученики" %}
+                </a>
+                <a href="{% url 'teachers' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'teacher' in request.resolver_match.url_name or 'absence' in request.resolver_match.url_name or 'substitution' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Преподаватели" %}
+                </a>
+                <div class="ml-3 border-l border-slate-200 pl-2">
+                    <a href="{% url 'absence_list' %}"
+                       class="block rounded-xl px-3 py-1.5 text-xs font-medium transition {% if 'absence' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-500 hover:bg-slate-50{% endif %}">
+                        {% trans "Отсутствия" %}
+                    </a>
+                    <a href="{% url 'substitution_list' %}"
+                       class="block rounded-xl px-3 py-1.5 text-xs font-medium transition {% if request.resolver_match.url_name == 'substitution_list' %}bg-indigo-50 text-indigo-700{% else %}text-slate-500 hover:bg-slate-50{% endif %}">
+                        {% trans "Подмены" %}
+                    </a>
+                </div>
+                <a href="{% url 'subjects' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'subject' in request.resolver_match.url_name or 'group' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Программы и группы" %}
+                </a>
+                <a href="{% url 'schedule' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'schedule' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Расписание" %}
+                </a>
+                <a href="{% url 'periods' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'period' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Учебные периоды" %}
+                </a>
+            {% endif %}
+            {# Журналы: посещаемость, темы, конкурсы и повышение квалификации. #}
+            {% if user.is_staff_member or user.is_authenticated %}
+                <div class="my-2 border-t border-slate-100"></div>
+                <p class="px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                    {% trans "Журналы" %}
+                </p>
+            {% endif %}
+            {% if user.is_staff_member %}
+                <a href="{% url 'week_journal' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if request.resolver_match.url_name == 'week_journal' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Посещаемость" %}
+                </a>
+                <a href="{% url 'topics' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if request.resolver_match.url_name == 'topics' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Темы занятий" %}
+                </a>
+            {% endif %}
+            {% if user.is_authenticated %}
+                <a href="{% url 'contests' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'contest' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Участие в конкурсах" %}
+                </a>
+                <a href="{% url 'development' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'development' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Повышение квалификации" %}
+                </a>
+            {% endif %}
+            {# Отчёты и служебное: выгрузки, демо-режим и администрирование. #}
+            {% if user.is_staff_member or user.is_admin %}
+                <div class="my-2 border-t border-slate-100"></div>
+                <p class="px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                    {% trans "Отчёты и служебное" %}
+                </p>
+            {% endif %}
+            {% if user.is_staff_member %}
+                <a href="{% url 'export' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'export' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Выгрузка в Excel" %}
+                </a>
+            {% endif %}
+            {% if user.is_admin %}
+                <a href="{% url 'demo_manage' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'demo' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Демо-режим и демо-данные" %}
+                </a>
+                <a href="{% url 'staff' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'staff' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Сотрудники УМО" %}
+                </a>
+                <a href="{% url 'security' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'security' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Безопасность" %}
+                </a>
+                <div class="my-2 border-t border-slate-100"></div>
+                <p class="px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                    {% trans "Администрирование" %}
+                </p>
+                <a href="{% url 'backup' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'backup' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    {% trans "Резервная копия" %}
+                </a>
+            {% if user.is_superadmin %}
+                <a href="{% url 'customization' %}"
+               class="block rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+                {% trans "Кастомизация" %}
+            </a>
+            {% endif %}
+                <a href="{% url 'admin:index' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+                    {% trans "Админка Django" %}
+                </a>
+            {% endif %}
+            <div class="my-2 border-t border-slate-100"></div>
+            <p class="px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                {% trans "Справка" %}
+            </p>
+            <a href="{% url 'faq' %}"
+               class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if request.resolver_match.url_name == 'faq' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                {% trans "Справка: что где лежит" %}
+            </a>
+            {% if not user.is_authenticated %}
+                <a href="{% url 'about' %}"
+                   class="block rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+                    {% trans "О продукте" %}
+                </a>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main id="page-content" class="min-w-0 flex-1 flex flex-col">
+        <div id="page-messages"
+                         class="pointer-events-none fixed right-4 top-20 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div data-toast
+                                     class="pointer-events-auto flex items-start gap-2 rounded-xl border bg-white px-3 py-2.5 text-sm shadow-lg
+                                            {% if message.tags == 'error' %}border-rose-200 text-rose-800{% elif message.tags == 'warning' %}border-amber-200 text-amber-900{% elif message.tags == 'success' %}border-emerald-200 text-emerald-800{% else %}border-slate-200 text-slate-700{% endif %}">
+                                    <span class="mt-0.5 shrink-0">{% if message.tags == 'error' %}⚠{% elif message.tags == 'warning' %}⏳{% elif message.tags == 'success' %}✓{% else %}ⓘ{% endif %}</span>
+                                    <span class="min-w-0 flex-1">{{ message }}</span>
+                                    <button type="button" data-toast-close aria-label="{% trans 'Закрыть' %}"
+                                            class="shrink-0 rounded-lg px-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">✕</button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    {% block content %}{% endblock %}
+    
+        <footer class="mt-auto pt-10 text-center text-xs text-slate-400">
+        <div class="border-t border-slate-200 pt-4 pb-4">
+            {{ app_product }} · {{ app_author }} ·
+            <a href="{% url 'about' %}" class="transition hover:text-slate-600">{% trans "о продукте" %}</a>
+            · <a href="{% url 'faq' %}" class="transition hover:text-slate-600">{% trans "справка" %}</a>
+        </div>
+    </footer>
+    </main>
+</div>
+<script>window.__APP_CONFIG = Object.assign(window.__APP_CONFIG || {}, {themeCookie: "{{ theme_cookie|escapejs }}"});</script>
+<script src="{% static 'journal/widgets.js' %}?v=30" defer></script>
+<script src="{% static 'journal/collapse.js' %}?v=24" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

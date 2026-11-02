@@ -1,0 +1,377 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Безопасность · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold">{% trans "Безопасность" %}</h1>
+    <p class="text-sm text-slate-500">
+        {% blocktrans %}Раздел виден только главному администратору. Здесь настраивается почта для уведомлений,
+        доступ по IP-адресам и журнал заходов.{% endblocktrans %}
+    </p>
+</div>
+
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="rounded-2xl bg-white p-4 shadow-sm">
+        <p class="text-xs text-slate-500">{% trans "Ваш IP-адрес" %}</p>
+        <p class="mt-1 font-mono text-sm">{% trans "не определён" as ip_unknown %}{{ current_ip|default:ip_unknown }}</p>
+    </div>
+    <div class="rounded-2xl bg-white p-4 shadow-sm">
+        <p class="text-xs text-slate-500">{% trans "Неудачных входов всего" %}</p>
+        <p class="mt-1 text-xl font-semibold">{{ failed_total }}</p>
+    </div>
+    <div class="rounded-2xl bg-white p-4 shadow-sm">
+        <p class="text-xs text-slate-500">{% trans "Заблокированных попыток" %}</p>
+        <p class="mt-1 text-xl font-semibold">{{ blocked_total }}</p>
+    </div>
+    <div class="rounded-2xl bg-white p-4 shadow-sm">
+        <p class="text-xs text-slate-500">{% trans "Режим" %}</p>
+        <p class="mt-1 text-sm">
+            {% if settings_flags.debug %}<span class="text-rose-600">{% trans "DEBUG включён" %}</span>{% else %}<span class="text-emerald-700">{% trans "DEBUG выключен" %}</span>{% endif %}<br>
+            {% if settings_flags.https %}<span class="text-emerald-700">{% trans "HTTPS-редирект включён" %}</span>{% else %}<span class="text-amber-700">{% trans "HTTPS не форсируется" %}</span>{% endif %}<br>
+            {% if settings_flags.secure_cookies %}<span class="text-emerald-700">{% trans "cookie только по HTTPS" %}</span>{% else %}<span class="text-amber-700">{% trans "cookie без HTTPS" %}</span>{% endif %}
+        </p>
+    </div>
+</div>
+
+{% if settings_flags.debug or not settings_flags.https %}
+    <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <p class="font-medium">{% trans "Проверьте боевые настройки" %}</p>
+        <ul class="mt-2 list-disc space-y-1 pl-5">
+            <li>{% blocktrans %}Для сайта в интернете поставьте <code class="rounded bg-white px-1">DEBUG=0</code>,
+                задайте длинный <code class="rounded bg-white px-1">SECRET_KEY</code> и список
+                <code class="rounded bg-white px-1">ALLOWED_HOSTS</code>.{% endblocktrans %}</li>
+            <li>{% blocktrans %}Публикуйте сайт только по HTTPS (сертификат Let's Encrypt и обратный прокси),
+                затем включите <code class="rounded bg-white px-1">SECURE_SSL_REDIRECT=1</code>,
+                <code class="rounded bg-white px-1">SESSION_COOKIE_SECURE=1</code>,
+                <code class="rounded bg-white px-1">CSRF_COOKIE_SECURE=1</code> и
+                <code class="rounded bg-white px-1">TRUST_PROXY_HEADERS=1</code>.{% endblocktrans %}</li>
+            <li>{% blocktrans %}Отключите демо-режим: <code class="rounded bg-white px-1">DEMO_MODE=0</code>.{% endblocktrans %}</li>
+            <li>{% blocktrans %}Спрячьте админку: <code class="rounded bg-white px-1">ADMIN_URL=secret-admin-panel/</code>.{% endblocktrans %}</li>
+        </ul>
+    </div>
+{% endif %}
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+    <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold">{% trans "Почта и уведомления" %}</h2>
+        <p class="mt-1 text-sm text-slate-500">
+            {% blocktrans %}Письма приходят на указанные адреса. Пароль SMTP хранится в базе в зашифрованном виде
+            (ключ — SECRET_KEY проекта).{% endblocktrans %}
+        </p>
+        <form method="post" class="mt-4 space-y-4" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="mail">
+            {% for field in mail_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                        {{ field.label }}
+                    </label>
+                    {% if field.name == 'notify_logins' or field.name == 'notify_failed_logins' or field.name == 'notify_ip_blocked' or field.name == 'notify_backup' or field.name == 'notify_accounts' or field.name == 'use_tls' or field.name == 'use_ssl' %}
+                        <label class="flex items-center gap-2 text-sm text-slate-700">
+                            {{ field }}
+                            <span>{% trans "включено" %}</span>
+                        </label>
+                    {% else %}
+                        {{ field }}
+                    {% endif %}
+                    {% if field.help_text %}
+                        <p class="mt-1 text-xs text-slate-400">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            {% for error in mail_form.non_field_errors %}
+                <p class="text-xs text-rose-600">{{ error }}</p>
+            {% endfor %}
+            <div class="flex flex-wrap items-center gap-3">
+                <button type="submit"
+                        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    {% trans "Сохранить настройки" %}
+                </button>
+            </div>
+        </form>
+
+        <form method="post" class="mt-4 border-t border-slate-100 pt-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="test_mail">
+            <label for="test_address" class="mb-1 block text-sm font-medium text-slate-700">{% trans "Проверка: отправить тестовое письмо" %}</label>
+            <div class="flex flex-wrap items-center gap-2">
+                <input type="email" name="test_address" id="test_address"
+                       value="{{ mail_form.instance.from_email }}"
+                       placeholder="admin@example.com"
+                       class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                <button type="submit"
+                        class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    {% trans "Отправить тест" %}
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold">{% trans "Доступ по IP-адресам" %}</h2>
+        <p class="mt-1 text-sm text-slate-500">
+            {% blocktrans %}Чёрный список блокирует адрес. Если добавлен хотя бы один белый список, доступ разрешён
+            только адресам из него (локальные 127.0.0.1 и ::1 разрешены всегда).{% endblocktrans %}
+        </p>
+
+        {% if allow_rules_exist %}
+            <div class="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+                {% trans "Включён белый список: посторонние адреса не смогут открыть журнал." %}
+            </div>
+        {% endif %}
+
+        <form method="post" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_rule">
+            <div class="sm:col-span-2">
+                <label for="{{ rule_form.address.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">{{ rule_form.address.label }}</label>
+                {{ rule_form.address }}
+                {% for error in rule_form.address.errors %}
+                    <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label for="{{ rule_form.kind.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">{{ rule_form.kind.label }}</label>
+                {{ rule_form.kind }}
+            </div>
+            <div>
+                <label for="{{ rule_form.comment.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">{{ rule_form.comment.label }}</label>
+                {{ rule_form.comment }}
+            </div>
+            <div class="sm:col-span-2">
+                <button type="submit"
+                        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    {% trans "Добавить правило" %}
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-4 divide-y divide-slate-100 border-t border-slate-100">
+            {% for rule in rules %}
+                <div class="flex flex-wrap items-center justify-between gap-2 py-2">
+                    <div>
+                        <p class="font-mono text-sm">{{ rule.address }}</p>
+                        <p class="text-xs text-slate-500">
+                            {{ rule.get_kind_display }}{% if rule.comment %} · {{ rule.comment }}{% if rule.expires_at %} · {% trans "до" %} {{ rule.expires_at|date:"d.m.Y H:i" }}{% endif %}{% endif %}
+                        </p>
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_rule">
+                        <input type="hidden" name="rule_id" value="{{ rule.pk }}">
+                        <button type="submit" class="text-xs text-rose-600 hover:text-rose-700">{% trans "Удалить" %}</button>
+                    </form>
+                </div>
+            {% empty %}
+                <p class="py-3 text-sm text-slate-500">{% trans "Правил пока нет: доступ открыт всем адресам." %}</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% if locked_ips or locked_accounts %}
+    <div class="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+        <p class="text-sm font-medium text-rose-900">{% trans "Временные блокировки защитой от подбора пароля" %}</p>
+        <p class="mt-1 text-xs text-rose-800">
+            {% blocktrans %}Логин блокируется после 5 неудачных попыток с одного адреса, адрес целиком — после 30.
+            Блокировка снимается автоматически через 15 минут после последней неудачной попытки.{% endblocktrans %}
+        </p>
+        {% if locked_accounts %}
+            <p class="mt-3 text-xs font-medium uppercase tracking-wide text-rose-800">{% trans "Логины" %}</p>
+            <div class="mt-1 flex flex-wrap gap-2">
+                {% for item in locked_accounts %}
+                    <span class="rounded-full bg-white px-3 py-1 text-xs text-rose-700">
+                        {% blocktrans with username=item.username ip=item.ip attempts=item.attempts %}{{ username }} с {{ ip }} · {{ attempts }} попыток{% endblocktrans %}
+                    </span>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% if locked_ips %}
+            <p class="mt-3 text-xs font-medium uppercase tracking-wide text-rose-800">{% trans "Адреса целиком" %}</p>
+            <div class="mt-1 flex flex-wrap gap-2">
+                {% for item in locked_ips %}
+                    <span class="rounded-full bg-white px-3 py-1 font-mono text-xs text-rose-700">{% blocktrans with ip=item.ip attempts=item.attempts %}{{ ip }} · {{ attempts }} попыток{% endblocktrans %}</span>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endif %}
+
+<div class="mt-6 rounded-2xl bg-white p-5 shadow-sm">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h2 class="text-lg font-semibold">{% trans "Защита от сканеров" %}</h2>
+            <p class="mt-1 text-sm text-slate-500">
+                {% blocktrans with threshold=auto_block_threshold hours=auto_block_hours %}Автоматические сканеры перебирают чужие адреса: файлы настроек, панели, GraphQL.
+                Такие запросы попадают в журнал как «подозрительный запрос», а после
+                {{ threshold }} таких запросов с одного адреса он блокируется сам на
+                {{ hours }} ч.{% endblocktrans %}
+            </p>
+        </div>
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+            {% blocktrans with days=probe_days %}за {{ days }} дней{% endblocktrans %}
+        </span>
+    </div>
+
+    <dl class="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
+        <div class="rounded-xl border border-slate-200 px-3 py-2">
+            <dt class="text-xs text-slate-500">{% trans "Заходов" %}</dt>
+            <dd class="text-lg font-semibold">{{ stats.visits }}</dd>
+        </div>
+        <div class="rounded-xl border border-slate-200 px-3 py-2">
+            <dt class="text-xs text-slate-500">{% trans "Своих адресов" %}</dt>
+            <dd class="text-lg font-semibold">{{ stats.ips }}</dd>
+        </div>
+        <div class="rounded-xl border border-slate-200 px-3 py-2">
+            <dt class="text-xs text-slate-500">{% trans "Неудачных входов" %}</dt>
+            <dd class="text-lg font-semibold">{{ stats.failed }}</dd>
+        </div>
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+            <dt class="text-xs text-amber-800">{% trans "Подозрительных" %}</dt>
+            <dd class="text-lg font-semibold text-amber-900">{{ stats.probes }}</dd>
+        </div>
+        <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
+            <dt class="text-xs text-rose-700">{% trans "Отказов в доступе" %}</dt>
+            <dd class="text-lg font-semibold text-rose-800">{{ stats.blocked }}</dd>
+        </div>
+    </dl>
+
+    {% if probe_ips %}
+        <div class="mt-5 grid gap-5 lg:grid-cols-2">
+            <div>
+                <h3 class="text-sm font-semibold text-slate-700">{% trans "Кто сканировал" %}</h3>
+                <div class="overflow-x-auto">
+                                        <table class="mt-2 w-full text-left text-sm">
+                    <thead class="text-xs uppercase tracking-wide text-slate-400">
+                        <tr>
+                            <th class="py-1">{% trans "IP-адрес" %}</th>
+                            <th class="py-1">{% trans "Запросов" %}</th>
+                            <th class="py-1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in probe_ips %}
+                            <tr class="border-t border-slate-100">
+                                <td class="py-2 font-mono text-xs">{{ item.ip }}</td>
+                                <td class="py-2">{{ item.count }}</td>
+                                <td class="py-2 text-right">
+                                    {% if item.blocked %}
+                                        <span class="rounded-full bg-rose-50 px-2 py-0.5 text-xs text-rose-700">{% trans "заблокирован" %}</span>
+                                    {% else %}
+                                        <form method="post" class="inline">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="block_ip">
+                                            <input type="hidden" name="address" value="{{ item.ip }}">
+                                                        <div class="flex flex-wrap items-center justify-end gap-2">
+                                                <button type="submit" name="hours" value="24"
+                                                        class="rounded-lg border border-rose-300 px-3 py-1 text-xs font-medium text-rose-700 transition hover:bg-rose-50">
+                                                    {% trans "Заблокировать на сутки" %}
+                                                </button>
+                                                <button type="submit" name="hours" value="0"
+                                                        class="rounded-lg bg-rose-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-rose-700">
+                                                    {% trans "Навсегда" %}
+                                                </button>
+                                            </div>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                                    </div>
+            </div>
+            <div>
+                <h3 class="text-sm font-semibold text-slate-700">{% trans "Что искали" %}</h3>
+                <ul class="mt-2 space-y-1 text-sm">
+                    {% for item in probe_paths %}
+                        <li class="flex items-center justify-between gap-3 border-t border-slate-100 py-1.5">
+                            <span class="truncate font-mono text-xs text-slate-600">{{ item.path }}</span>
+                            <span class="shrink-0 text-xs text-slate-400">{{ item.count }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <p class="mt-3 text-xs text-slate-400">
+                    {% blocktrans %}Ничего из этого в журнале не существует, поэтому все запросы получили страницу
+                    «Такой страницы нет». Пароли и данные сканер не получил.{% endblocktrans %}
+                </p>
+            </div>
+        </div>
+    {% else %}
+        <p class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {% blocktrans with days=probe_days %}Подозрительных запросов за {{ days }} дней не было.{% endblocktrans %}
+        </p>
+    {% endif %}
+</div>
+
+<div class="mt-6 rounded-2xl bg-white p-5 shadow-sm">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="text-lg font-semibold">{% trans "Журнал заходов" %}</h2>
+            <p class="text-sm text-slate-500">{% trans "Видно, с каких адресов и под каким пользователем заходили на сайт." %}</p>
+        </div>
+        <form method="get" class="flex flex-wrap items-center gap-2">
+            <select name="kind" data-autosubmit
+                    class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-indigo-500">
+                <option value="">{% trans "Все события" %}</option>
+                {% for value, label in kinds %}
+                    <option value="{{ value }}" {% if log_kind == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="ip" value="{{ ip_filter }}" placeholder="{% trans "IP-адрес" %}"
+                   data-autosubmit
+                   class="w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-indigo-500">
+            <noscript><button type="submit"
+                    class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                {% trans "Показать" %}
+            </button></noscript>
+            <a href="{% url 'security' %}" class="text-sm text-slate-500 hover:text-slate-700">{% trans "Сбросить" %}</a>
+        </form>
+    </div>
+
+    <div class="mt-4 overflow-x-auto">
+        <table class="w-full min-w-[900px] text-left text-sm">
+            <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                    <th class="px-3 py-2">{% trans "Когда" %}</th>
+                    <th class="px-3 py-2">{% trans "Событие" %}</th>
+                    <th class="px-3 py-2">{% trans "IP-адрес" %}</th>
+                    <th class="px-3 py-2">{% trans "Пользователь" %}</th>
+                    <th class="px-3 py-2">{% trans "Страница" %}</th>
+                    <th class="px-3 py-2">{% trans "Подробности" %}</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for item in logs %}
+                    <tr class="odd:bg-white even:bg-slate-50/60">
+                        <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ item.created_at|date:"d.m.Y H:i:s" }}</td>
+                        <td class="px-3 py-2">{{ item.get_kind_display }}</td>
+                        <td class="px-3 py-2 font-mono text-xs">{{ item.ip|default:"—" }}</td>
+                        <td class="px-3 py-2 text-slate-600">
+                            {% if item.user %}{{ item.user.full_name }}{% elif item.username %}{{ item.username }}{% else %}—{% endif %}
+                        </td>
+                        <td class="px-3 py-2 text-slate-500">{{ item.path|default:"—" }}</td>
+                        <td class="px-3 py-2 text-slate-500">{{ item.detail|default:"" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-3 py-8 text-center text-slate-500">{% trans "Записей нет." %}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% trans "Очистить журнал заходов на страницы? Входы и события останутся." as clear_log_confirm %}
+    <form method="post" class="mt-4" onsubmit="return confirm('{{ clear_log_confirm|escapejs }}');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="clear_log">
+        <button type="submit" class="text-sm text-rose-600 hover:text-rose-700">{% trans "Очистить журнал заходов" %}</button>
+    </form>
+</div>
+{% endblock %}

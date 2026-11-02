@@ -1,0 +1,102 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ subject.name }} · {% trans "Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{% url 'subjects' %}" class="text-sm text-slate-500 hover:text-slate-700">← {% trans "Все программы" %}</a>
+    <div class="mt-2 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-semibold">{{ subject.name }}</h1>
+            <p class="text-sm text-slate-500">
+                {% blocktrans with teacher=subject.teacher.full_name|default:_("не назначен") %}Преподаватель: {{ teacher }}{% endblocktrans %}
+                {% if subject.branch %}· {% blocktrans with branch_name=subject.branch.name %}адрес: <span class="font-medium text-slate-700">{{ branch_name }}</span>{% endblocktrans %}{% endif %}
+                {% if subject.term %}· {% blocktrans with term_title=subject.term.full_title term_range=subject.term.date_range %}полугодие: {{ term_title }} ({{ term_range }}){% endblocktrans %}{% endif %}
+            </p>
+            <p class="mt-1 text-xs text-slate-400">
+                {% blocktrans %}Программа существует только в этом адресе и в этом полугодии — на других адресах и в других
+                полугодиях он создаётся или переносится отдельно.{% endblocktrans %}
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{% url 'group_add' subject.pk %}"
+               class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                {% trans "Добавить группу" %}
+            </a>
+            <a href="{% url 'period_copy' %}"
+               class="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-50">
+                {% trans "Перенести из полугодия" %}
+            </a>
+            <a href="{% url 'subject_edit' subject.pk %}"
+               class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+                {% trans "Изменить программу" %}
+            </a>
+            <a href="{% url 'subject_delete' subject.pk %}"
+               class="rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-600 shadow-sm transition hover:bg-rose-50">
+                {% trans "Удалить программу" %}
+            </a>
+        </div>
+    </div>
+    {% if other_terms_count %}
+        <p class="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            {% blocktrans with count=other_terms_count %}Внимание: {{ count }} групп(ы) этого программы оказались в другом полугодии —
+            это данные старой версии. Перенесите их кнопкой «Перенести из полугодия».{% endblocktrans %}
+        </p>
+    {% endif %}
+    {% if same_name_other_scopes %}
+        <p class="mt-3 rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600">
+            {% blocktrans with count=same_name_other_scopes %}Такая же программа есть ещё в {{ count }} месте(ах) — в других полугодиях
+            или адресах. Это отдельные программы со своими группами и расписанием.{% endblocktrans %}
+        </p>
+    {% endif %}
+</div>
+
+<div class="space-y-4">
+    {% for group in term_groups %}
+        <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold">{{ group.name }}</h2>
+                    <p class="text-sm text-slate-500">{% blocktrans with count=group.students.count %}Учеников в группе: {{ count }}{% endblocktrans %}</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <a href="{% url 'group_students' group.pk %}"
+                       class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                        {% trans "Состав группы" %}
+                    </a>
+                    <a href="{% url 'group_edit' group.pk %}"
+                       class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                        {% trans "Изменить" %}
+                    </a>
+                    <a href="{% url 'group_delete' group.pk %}"
+                       class="rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50">
+                        {% trans "Удалить" %}
+                    </a>
+                </div>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+                {% for student in group.students.all %}
+                    <span class="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700">{{ student.full_name }}</span>
+                {% empty %}
+                    <p class="text-sm text-slate-500">
+                        {% trans "В группе пока нет учеников — нажмите «Состав группы», чтобы отметить их галочками." %}
+                        {% if all_students_count == 0 %}{% trans "Сначала добавьте учеников в разделе «Ученики»." %}{% endif %}
+                    </p>
+                {% endfor %}
+            </div>
+        </div>
+    {% empty %}
+        <div class="rounded-2xl bg-white p-10 text-center shadow-sm">
+            <p class="text-slate-500">
+                {% if term %}
+                    {% blocktrans with term_title=term.full_title %}В полугодии «{{ term_title }}» у программы пока нет групп.{% endblocktrans %}
+                {% else %}
+                    {% trans "У программы пока нет групп." %}
+                {% endif %}
+                {% trans "Нажмите «Добавить группу» или перенесите состав из другого полугодия." %}
+            </p>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

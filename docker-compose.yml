@@ -1,0 +1,62 @@
+name: school_journal
+
+services:
+  db:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    container_name: school_journal_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-school_journal}
+      POSTGRES_USER: ${POSTGRES_USER:-school_journal}
+      # Пароль берётся только из .env: известного пароля «по умолчанию» в
+      # репозитории нет. Пустое значение — понятная остановка, а не тихий
+      # запуск с предсказуемым паролем.
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в файле .env — install.sh создаёт его автоматически, вручную — openssl rand -hex 24}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-school_journal} -d ${POSTGRES_DB:-school_journal}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      args:
+        # Если Docker Hub недоступен, подставьте зеркало в .env (PYTHON_IMAGE).
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.12-slim}
+    container_name: school_journal_web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-school_journal}
+      POSTGRES_USER: ${POSTGRES_USER:-school_journal}
+      # Пароль — тот же, что у сервиса db: оба берут его из .env.
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в файле .env — install.sh создаёт его автоматически, вручную — openssl rand -hex 24}"
+      # Настроек безопасности по умолчанию нет: без своего .env контур не поднимется
+      # (compose остановится с понятной ошибкой), а не стартует в отладке с открытыми
+      # хостами и известным ключом. Проверки в school_journal/settings.py тоже
+      # отвергают пустой или слабый SECRET_KEY и пустой ALLOWED_HOSTS.
+      DEBUG: ${DEBUG:?Задайте DEBUG=0 (бой) или DEBUG=1 (локально) в файле .env}
+      SECRET_KEY: ${SECRET_KEY:?Задайте случайный SECRET_KEY не короче 50 символов в файле .env}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:?Перечислите домены журнала через запятую в ALLOWED_HOSTS (.env)}
+      DEMO_MODE: ${DEMO_MODE:-0}
+    ports:
+      # Слева — порт на машине (WEB_PORT из .env, по умолчанию 8000),
+      # справа — порт внутри контейнера, он не меняется.
+      - "${WEB_PORT:-8000}:8000"
+    volumes:
+      # Загруженные файлы (логотип, фавикон) живут вне контейнера:
+      # без тома они пропадали бы при каждом обновлении журнала.
+      - media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  media_data:

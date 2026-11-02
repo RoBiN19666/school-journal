@@ -1,0 +1,83 @@
+{% extends "journal/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Проверьте список" %} · {% trans "Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold">{% trans "Проверьте список" %}</h1>
+    <p class="text-sm text-slate-500">
+        {% blocktrans with parsed_count=parsed|length %}Разобрано строк: {{ parsed_count }} · из них уже есть в базе: {{ duplicates }}{% endblocktrans %}
+        {% if group %}· {% blocktrans with subject_name=group.subject.name group_name=group.name %}все новые попадут в группу «{{ subject_name }} · {{ group_name }}»{% endblocktrans %}{% endif %}
+        {% if skip_duplicates %}· {% trans "дубликаты будут пропущены" %}{% else %}· {% trans "дубликаты тоже будут добавлены" %}{% endif %}
+    </p>
+</div>
+
+{% if warnings %}
+    <div class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <p class="font-medium">{% trans "На что обратить внимание" %}</p>
+        <ul class="mt-2 list-disc space-y-1 pl-5">
+            {% for warning in warnings %}
+                <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<form method="post" action="{% url 'student_import_confirm' %}">
+    {% csrf_token %}
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input type="checkbox" id="select-all-rows" checked
+                       class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                {% trans "Отметить всех" %}
+            </label>
+            <span class="text-xs text-slate-400">{% trans "Снятая галочка — строку не импортируем" %}</span>
+        </div>
+
+        <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {% for row in parsed %}
+                <label class="flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm {% if row.duplicate %}border-amber-200 bg-amber-50/60{% else %}border-slate-200{% endif %}">
+                    <span class="flex items-center gap-3">
+                        <input type="checkbox" name="rows" value="{{ row.index }}" checked
+                               class="import-row h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <span>
+                            <span class="font-medium">{{ row.last_name }} {{ row.first_name }}{% if row.middle_name %} {{ row.middle_name }}{% endif %}</span>
+                            <span class="block text-xs text-slate-500">
+                                {% trans "дата рождения:" %}
+                                {% if row.birth_display %}{{ row.birth_display }}{% else %}<span class="text-slate-400">{% trans "не указана" %}</span>{% endif %}
+                                · {% trans "БП" %}:
+                                {% if row.dismissal == 'ЕО' %}<span class="text-emerald-700">ЕО — {% trans "можно отпускать" %}</span>
+                                {% elif row.dismissal == 'ЕН' %}<span class="text-rose-700">ЕН — {% trans "не отпускать" %}</span>
+                                {% elif row.dismissal == 'Н' %}<span class="text-slate-600">Н — {% trans "нет заявления" %}</span>
+                                {% else %}<span class="text-slate-400">{% trans "не указан → «Нет заявления»" %}</span>{% endif %}
+                            </span>
+                            <span class="block text-xs text-slate-400">{% blocktrans with raw=row.raw|truncatechars:40 %}из файла: {{ raw }}{% endblocktrans %}</span>
+                        </span>
+                    </span>
+                    {% if row.duplicate %}
+                        <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">{% trans "уже в базе" %}</span>
+                    {% else %}
+                        <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">{% trans "новый" %}</span>
+                    {% endif %}
+                </label>
+            {% endfor %}
+        </div>
+
+        <div class="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+            <button type="submit"
+                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                {% trans "Импортировать отмеченных" %}
+            </button>
+            <a href="{% url 'student_import' %}"
+               class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                {% trans "Загрузить другой файл" %}
+            </a>
+            <a href="{% url 'students' %}" class="text-sm text-slate-500 hover:text-slate-700">{% trans "Отмена" %}</a>
+        </div>
+    </div>
+</form>
+
+<script src="{% static 'journal/students-import-preview.js' %}?v=24" defer></script>
+{% endblock %}

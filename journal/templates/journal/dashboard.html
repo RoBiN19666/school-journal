@@ -1,0 +1,133 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% blocktrans with app_product=app_product|default:_("Электронный журнал") %}Сводка · {{ app_product }}{% endblocktrans %}{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-2xl font-semibold">{% trans "Сводка" %}</h1>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a href="{% url 'student_add' %}"
+           class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+            {% trans "Добавить ученика" %}
+        </a>
+        <a href="{% url 'subject_add' %}"
+           class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+            {% trans "Добавить программу" %}
+        </a>
+        <a href="{% url 'schedule_add' %}"
+           class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+            {% trans "Создать расписание" %}
+        </a>
+        <a href="{% url 'export' %}"
+           class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+            {% trans "Экспорт в Excel" %}
+        </a>
+        {% if user.is_admin %}
+            <a href="{% url 'staff_add' %}"
+               class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+                {% trans "Добавить сотрудника УМО" %}
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">{% trans "Ученики" %}</p>
+        <p class="mt-2 text-3xl font-semibold">{{ students_count }}</p>
+        <a href="{% url 'students' %}" class="mt-2 inline-block text-sm text-indigo-600 hover:text-indigo-700">{% trans "Все ученики →" %}</a>
+    </div>
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">{% trans "Программы" %}</p>
+        <p class="mt-2 text-3xl font-semibold">{{ subjects_count }}</p>
+        <a href="{% url 'subjects' %}" class="mt-2 inline-block text-sm text-indigo-600 hover:text-indigo-700">{% trans "Все программы →" %}</a>
+    </div>
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">{% trans "Группы в полугодии" %}</p>
+        <p class="mt-2 text-3xl font-semibold">{{ groups_count }}</p>
+        <a href="{% url 'subjects' %}" class="mt-2 inline-block text-sm text-indigo-600 hover:text-indigo-700">{% trans "Программы и группы →" %}</a>
+    </div>
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">{% trans "Занятий в полугодии" %}</p>
+        <p class="mt-2 text-3xl font-semibold">{{ schedules_count }}</p>
+        <a href="{% url 'schedule' %}" class="mt-2 inline-block text-sm text-indigo-600 hover:text-indigo-700">{% trans "Расписание →" %}</a>
+    </div>
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <p class="text-sm text-slate-500">{% trans "Преподаватели" %}</p>
+        <p class="mt-2 text-3xl font-semibold">{{ teachers_count }}</p>
+        <a href="{% url 'teachers' %}" class="mt-2 inline-block text-sm text-indigo-600 hover:text-indigo-700">{% trans "Все преподаватели →" %}</a>
+    </div>
+</div>
+
+<div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">{% trans "Последние ученики" %}</h2>
+            <a href="{% url 'student_add' %}" class="text-sm text-indigo-600 hover:text-indigo-700">{% trans "Добавить" %}</a>
+        </div>
+        {% if students %}
+            <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-sm">
+                <thead class="text-xs uppercase tracking-wide text-slate-400">
+                    <tr>
+                        <th class="pb-2">{% trans "ФИО" %}</th>
+                        <th class="pb-2">{% trans "Дата рождения" %}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for student in students %}
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-2 font-medium">{{ student.full_name }}</td>
+                            <td class="py-2 text-slate-500">{{ student.birth_date|date:"d.m.Y" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+                                    </div>
+        {% else %}
+            <p class="text-sm text-slate-500">{% trans "Учеников пока нет. Добавьте первого ученика." %}</p>
+        {% endif %}
+    </div>
+
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">{% trans "Программы" %}</h2>
+            <a href="{% url 'subject_add' %}" class="text-sm text-indigo-600 hover:text-indigo-700">{% trans "Добавить" %}</a>
+        </div>
+        {% if subjects %}
+            <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-sm">
+                <thead class="text-xs uppercase tracking-wide text-slate-400">
+                    <tr>
+                        <th class="pb-2">{% trans "Название" %}</th>
+                        <th class="pb-2">{% trans "Преподаватель" %}</th>
+                        <th class="pb-2">{% trans "Групп" %}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for subject in subjects %}
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-2 font-medium">
+                                <a href="{% url 'subject_detail' subject.pk %}" class="hover:text-indigo-600">{{ subject.name }}</a>
+                            </td>
+                            <td class="py-2 text-slate-500">{{ subject.teacher.full_name|default:"—" }}</td>
+                            <td class="py-2 text-slate-500">{{ subject.groups_count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+                                    </div>
+        {% else %}
+            <p class="text-sm text-slate-500">{% trans "Программ пока нет. Создайте первую программу." %}</p>
+        {% endif %}
+    </div>
+</div>
+
+{% if user.is_admin and dashboard_stats %}
+    {# Статистика по журналу событий: только для администраторов. #}
+    {% include "journal/includes/dashboard_stats.html" %}
+{% endif %}
+{% endblock %}

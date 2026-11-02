@@ -1,0 +1,42 @@
+{% load i18n %}
+{% comment %}
+Страница для заблокированного адреса: без панели разделов, без шапки с данными —
+только объяснение и кнопка возврата. Данные журнала заблокированному не показываем.
+{% endcomment %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru" data-theme="{{ theme }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% trans "Доступ закрыт · Электронный журнал" %}</title>
+    <script src="{% static 'journal/vendor/tailwind.js' %}"></script>
+    {% include "journal/includes/theme.html" %}
+</head>
+<body class="min-h-screen">
+    <main class="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+        <div class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <div class="grid h-20 w-20 place-items-center rounded-2xl border border-rose-200 bg-rose-50 text-2xl font-bold text-rose-700">
+                403
+            </div>
+            <h1 class="mt-5 text-2xl font-semibold">{% trans "Доступ с вашего адреса закрыт" %}</h1>
+            <p class="mt-3 text-sm text-slate-600">
+                {% blocktrans %}Администратор журнала ограничил доступ с этого IP-адреса. Если вы считаете,
+                что это ошибка, свяжитесь с администратором журнала и назовите свой адрес.{% endblocktrans %}
+            </p>
+            <div class="mt-6 flex flex-wrap items-center gap-3">
+                <button type="button" data-error-back
+                        class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    {% trans "Вернуться назад" %}
+                </button>
+                <a href="/login/"
+                   class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    {% trans "На страницу входа" %}
+                </a>
+            </div>
+        </div>
+    </main>
+    <script src="{% static 'journal/blocked.js' %}?v=24" defer></script>
+</body>
+</html>

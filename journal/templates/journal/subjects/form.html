@@ -1,0 +1,55 @@
+{% extends "journal/base.html" %}
+{% load static i18n %}
+
+{% block title %}{{ title }} · {% trans "Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold">{{ title }}</h1>
+    <p class="text-sm text-slate-500">
+        {% trans "Заполните поля и сохраните" %}
+        {% if branch or term %}
+            ·
+            {% if branch %}{% blocktrans with branch_name=branch.name %}адрес: <span class="font-medium text-slate-700">{{ branch_name }}</span>{% endblocktrans %}{% endif %}
+            {% if term %}{% if branch %}, {% endif %}{% blocktrans with term_title=term.full_title %}полугодие: <span class="font-medium text-slate-700">{{ term_title }}</span>{% endblocktrans %}{% endif %}
+        {% endif %}
+    </p>
+</div>
+
+<div class="max-w-xl rounded-2xl bg-white p-6 shadow-sm">
+    <form method="post" class="space-y-5" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+        {% for field in form %}
+            <div>
+                <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                    {{ field.label }}{% if field.field.required %} <span class="text-rose-500">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}
+                    <p class="mt-1 text-xs text-slate-400">{{ field.help_text }}</p>
+                {% endif %}
+                {% for error in field.errors %}
+                    <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endfor %}
+        <div class="flex items-center gap-3 pt-2">
+            <button type="submit"
+                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                {% trans "Сохранить" %}
+            </button>
+            <a href="{% if cancel_url %}{{ cancel_url }}{% else %}{% url 'subjects' %}{% endif %}"
+               class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                {% trans "Отмена" %}
+            </a>
+        </div>
+    </form>
+</div>
+
+<script src="{% static 'journal/subjects-form.js' %}?v=28" defer></script>
+{% endblock %}

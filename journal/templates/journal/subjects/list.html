@@ -1,0 +1,94 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Программы" %} · {% trans "Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-2xl font-semibold">{% trans "Программы" %}</h1>
+        <p class="text-sm text-slate-500">
+            {% if branch %}{% blocktrans with branch_name=branch.name %}Адрес: <span class="font-medium text-slate-700">{{ branch_name }}</span>{% endblocktrans %} · {% endif %}
+            {% if term %}{% blocktrans with term_title=term.full_title term_range=term.date_range %}Полугодие: <span class="font-medium text-slate-700">{{ term_title }}</span> ({{ term_range }}){% endblocktrans %} · {% endif %}
+            {% blocktrans with total=total_count %}всего программ: {{ total }}{% endblocktrans %}
+        </p>
+        <p class="mt-1 text-xs text-slate-400">
+            {% blocktrans %}Программы принадлежат выбранным адресу и полугодию: в другом полугодии или на другом
+            адресе они создаются отдельно или переносятся вместе с составом групп.{% endblocktrans %}
+        </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="{% url 'export_subjects' %}"
+           class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+            {% trans "Excel" %}
+        </a>
+        <a href="{% url 'period_copy' %}"
+           class="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-50">
+            {% trans "Перенести из другого полугодия" %}
+        </a>
+        <a href="{% url 'subject_add' %}"
+           class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+            {% trans "Добавить" %}
+        </a>
+    </div>
+</div>
+
+{% if other_scope_count %}
+    <div class="mb-4 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+        {% blocktrans with count=other_scope_count %}Ещё {{ count }} программ есть в других полугодиях или на других адресах —
+        они не смешиваются с текущими. Чтобы перенести программу вместе с группами и расписанием
+        сюда, откройте{% endblocktrans %}
+        <a href="{% url 'period_copy' %}" class="underline">«{% trans "Перенести из другого полугодия" %}»</a>
+        {% trans "и выберите адрес-источник." %}
+    </div>
+{% endif %}
+
+<div class="overflow-hidden rounded-2xl bg-white shadow-sm">
+    <div class="overflow-x-auto">
+                                        <table data-sortable class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-5 py-3">{% trans "Название" %}</th>
+                <th class="px-5 py-3">{% trans "Преподаватель" %}</th>
+                <th class="px-5 py-3">{% trans "Групп" %}</th>
+                <th class="px-5 py-3 text-right" data-sort-skip>{% trans "Действия" %}</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for subject in subjects %}
+                <tr class="odd:bg-white even:bg-slate-50/60 hover:bg-indigo-50/50">
+                    <td class="px-5 py-3 font-medium">{{ subject.name }}</td>
+                    <td class="px-5 py-3 text-slate-600">{{ subject.teacher.full_name|default:"—" }}</td>
+                    <td class="px-5 py-3 text-slate-600">{{ subject.groups_count }}</td>
+                    <td class="px-5 py-3">
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="{% url 'subject_detail' subject.pk %}"
+                               class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">
+                                {% trans "Открыть" %}
+                            </a>
+                            <a href="{% url 'subject_edit' subject.pk %}"
+                               class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">
+                                {% trans "Изменить" %}
+                            </a>
+                            <a href="{% url 'subject_delete' subject.pk %}"
+                               class="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50">
+                                {% trans "Удалить" %}
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="4" class="px-5 py-10 text-center text-slate-500">
+                        {% blocktrans %}В этом адресе и этого полугодия программ пока нет. Нажмите «Добавить»
+                        или перенесите программу с составом групп из другого полугодия.{% endblocktrans %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+                                    </div>
+</div>
+
+{% include "journal/includes/pagination.html" %}
+{% endblock %}

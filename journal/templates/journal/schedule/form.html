@@ -1,0 +1,181 @@
+{% extends "journal/base.html" %}
+{% load static i18n %}
+
+{% block title %}{{ title }} · {% trans "Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{% url 'schedule' %}" class="text-sm text-slate-500 hover:text-slate-700">← {% trans "Расписание" %}</a>
+    <h1 class="mt-2 text-2xl font-semibold">{{ title }}</h1>
+    <p class="text-sm text-slate-500">
+        {% blocktrans %}Время у каждого занятия своё. Строки в таблице расписания строятся по этому времени.
+        Дата заполняется только у разового занятия — например, мероприятия: тогда занятие
+        пройдёт один раз, и день недели определится по дате сам.{% endblocktrans %}
+        {% if availability_branch %}
+            {% blocktrans with branch_name=availability_branch.name %}Адрес занятия — <span class="font-medium text-slate-700">{{ branch_name }}</span>:
+            он определяется адресом программы выбранной группы, кабинеты тоже из этого адреса.{% endblocktrans %}
+        {% endif %}
+    </p>
+</div>
+
+<div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+    <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="space-y-5">
+            {% if form.non_field_errors %}
+                <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {% for field in form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                        {{ field.label }}{% if field.field.required %} <span class="text-rose-500">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <p class="mt-1 text-xs text-slate-400">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+                <button type="submit"
+                        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    {% trans "Сохранить" %}
+                </button>
+                <a href="{% url 'schedule' %}"
+                   class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    {% trans "Отмена" %}
+                </a>
+                {% if delete_url %}
+                    <a href="{{ delete_url }}"
+                       class="ml-auto rounded-lg border border-rose-200 px-4 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50">
+                        {% trans "Удалить занятие" %}
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+    </div>
+
+    {# Панели обновляются динамически при смене преподавателя и дня недели #}
+    <div id="schedule-panels" class="space-y-6">
+        <div class="rounded-2xl bg-white p-6 shadow-sm">
+            <div class="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                    <h2 class="text-lg font-semibold">{% trans "Свободное время преподавателя" %}</h2>
+                    {% if availability_teacher %}
+                        <p class="text-sm text-slate-500">
+                            {{ availability_teacher.full_name }}
+                            {% if availability_is_extra %}
+                                <span class="ml-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">{% trans "подменяющий" %}</span>
+                            {% endif %}
+                        </p>
+                    {% else %}
+                        <p class="text-sm text-slate-500">{% trans "Выберите группу — покажем занятость её преподавателя" %}</p>
+                    {% endif %}
+                </div>
+                {% if availability_teacher %}
+                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                        {% trans "зелёные промежутки свободны" %}
+                    </span>
+                {% endif %}            </div>
+
+            {% if availability_teacher %}
+                <p class="mt-2 text-xs text-slate-400">
+                    {% blocktrans %}Преподаватель общий для всех адресов, поэтому здесь видно и занятия на других адресах.
+                    Смените преподавателя или день недели в форме — панели пересчитаются сразу,
+                    страница не перезагружается. Нажмите на свободный промежуток — он подставится в форму.
+                    Выбор группы меняет список кабинетов, поэтому группа применяется с обновлением страницы.{% endblocktrans %}
+                </p>
+
+                {% if availability_selected %}
+                    <p class="mt-4 text-xs font-medium uppercase tracking-wide text-slate-400">{% trans "Выбранный день" %}</p>
+                    <div class="mt-2">
+                        {% include "journal/includes/availability_day.html" with day=availability_selected highlighted=1 %}
+                    </div>
+                    {% if availability_others %}
+                        <p class="mt-4 text-xs font-medium uppercase tracking-wide text-slate-400">{% trans "Остальные дни недели" %}</p>
+                        <div class="mt-2 space-y-3">
+                            {% for day in availability_others %}
+                                {% include "journal/includes/availability_day.html" with day=day %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <p class="mt-4 text-xs text-slate-400">
+                        {% trans "Выберите день недели в форме — он поднимется наверх, сюда, вместе со своими свободными окнами." %}
+                    </p>
+                    <div class="mt-2 space-y-3">
+                        {% for day in availability_others %}
+                            {% include "journal/includes/availability_day.html" with day=day %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="rounded-2xl bg-white p-6 shadow-sm">
+            <div class="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                    <h2 class="text-lg font-semibold">{% trans "Занятость кабинетов" %}</h2>
+                    <p class="text-sm text-slate-500">
+                        {% if availability_branch %}{% blocktrans with branch_name=availability_branch.name %}Адрес: {{ branch_name }}{% endblocktrans %}{% else %}{% trans "Выберите адрес занятия" %}{% endif %}
+                        {% if room_usage_date %}· {% blocktrans with usage_date=room_usage_date|date:"d.m.Y" %}разовое занятие {{ usage_date }}{% endblocktrans %}
+                        {% elif room_usage_day_label %}· {{ room_usage_day_label }}{% endif %}
+                    </p>
+                </div>
+                {% if room_usage %}
+                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+                        {% blocktrans with rooms_count=room_usage|length %}кабинетов: {{ rooms_count }}{% endblocktrans %}
+                    </span>
+                {% endif %}
+            </div>
+
+            {% if room_usage %}
+                <div class="mt-3 space-y-2">
+                    {% for row in room_usage %}
+                        <div class="rounded-xl border border-slate-200 px-3 py-2">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <p class="text-sm font-medium text-slate-700">{{ row.room.name }}</p>
+                                {% if row.status == "free" %}
+                                    <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">{% trans "свободен весь день" %}</span>
+                                {% elif row.status == "partial" %}
+                                    <span class="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">{% trans "занят частично" %}</span>
+                                {% else %}
+                                    <span class="rounded-full bg-rose-50 px-2 py-0.5 text-xs text-rose-600">{% trans "занят весь день" %}</span>
+                                {% endif %}
+                            </div>
+                            {% if row.busy %}
+                                <div class="mt-1 flex flex-wrap gap-2">
+                                    {% for lesson in row.busy %}
+                                        <span class="inline-flex max-w-[11rem] items-center justify-center rounded-xl bg-slate-100 px-2.5 py-1 text-center text-xs font-medium leading-snug text-slate-600">
+                                            {{ lesson.time }} · {{ lesson.subject }} · {{ lesson.group }}{% if lesson.date_label %} ({{ lesson.date_label }}){% endif %}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <p class="mt-3 text-xs text-slate-400">
+                    {% trans "Кабинет нельзя выбрать на занятое время — форма это проверит при сохранении." %}
+                </p>
+            {% else %}
+                <p class="mt-3 text-sm text-slate-500">
+                    {% trans "Выберите адрес и день недели — покажем, какие кабинеты свободны, а какие заняты." %}
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>window.__APP_CONFIG = Object.assign(window.__APP_CONFIG || {}, {scheduleDuration: {{ duration_minutes }}});</script>
+<script src="{% static 'journal/schedule-form.js' %}?v=26" defer></script>
+{% endblock %}

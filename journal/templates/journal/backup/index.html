@@ -1,0 +1,114 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Резервная копия · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold">{% trans "Резервная копия" %}</h1>
+    <p class="text-sm text-slate-500">
+        {% trans "Раздел виден только главному администратору. Копия — это один файл JSON со всеми данными журнала." %}
+    </p>
+</div>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-semibold">{% trans "Скачать копию" %}</h2>
+        <p class="mt-1 text-sm text-slate-500">
+            {% blocktrans %}В файл попадут все текущие данные и пароли пользователей (в виде хешей).
+            Копию можно зашифровать парольной фразой — тогда файл нельзя прочитать без неё.{% endblocktrans %}
+        </p>
+
+        <dl class="mt-4 grid grid-cols-2 gap-2 text-sm">
+            <dt class="text-slate-500">{% trans "Ученики" %}</dt><dd class="font-medium">{{ counts.students }}</dd>
+            <dt class="text-slate-500">{% trans "Программы" %}</dt><dd class="font-medium">{{ counts.subjects }}</dd>
+            <dt class="text-slate-500">{% trans "Группы" %}</dt><dd class="font-medium">{{ counts.groups }}</dd>
+            <dt class="text-slate-500">{% trans "Занятия" %}</dt><dd class="font-medium">{{ counts.schedules }}</dd>
+            <dt class="text-slate-500">{% trans "Отметки посещаемости" %}</dt><dd class="font-medium">{{ counts.attendance }}</dd>
+            <dt class="text-slate-500">{% trans "Пользователи" %}</dt><dd class="font-medium">{{ counts.users }}</dd>
+        </dl>
+
+        <form method="post" action="{% url 'backup_download' %}" class="mt-5 space-y-3">
+            {% csrf_token %}
+            <div>
+                <label for="download-passphrase" class="mb-1 block text-sm font-medium text-slate-700">
+                    {% trans "Парольная фраза (необязательно)" %}
+                </label>
+                <input type="password" name="passphrase" id="download-passphrase"
+                       autocomplete="new-password" placeholder="{% trans "Оставьте пустым для обычного файла" %}"
+                       class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-indigo-500">
+                <p class="mt-1 text-xs text-slate-400">
+                    {% blocktrans %}С фразой файл скачается как <span class="font-mono">.json.enc</span> и будет
+                    зашифрован (PBKDF2 + HMAC). Фраза нигде не сохраняется — потеряете её, копию
+                    не восстановить. Восстановление тоже спросит фразу.{% endblocktrans %}
+                </p>
+            </div>
+            <button type="submit"
+                    class="inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                {% trans "Скачать резервную копию" %}
+            </button>
+        </form>
+        {% if counts.students or counts.attendance %}
+            <a href="{% url 'export_students' %}"
+               class="mt-3 inline-block rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                {% trans "Ещё и в Excel" %}
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-semibold">{% trans "Восстановить из копии" %}</h2>
+        <p class="mt-1 text-sm text-slate-500">
+            {% trans "Загрузите файл, скачанный этой же кнопкой. Для зашифрованной копии укажите парольную фразу." %}
+        </p>
+
+        <form method="post" action="{% url 'backup_restore' %}" enctype="multipart/form-data" class="mt-4 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label for="{{ form.file.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                    {{ form.file.label }}
+                </label>
+                {{ form.file }}
+                {% for error in form.file.errors %}
+                    <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <span class="mb-1 block text-sm font-medium text-slate-700">{{ form.mode.label }}</span>
+                <div class="space-y-2">
+                    {% for choice in form.mode %}
+                        <label class="flex items-start gap-3 rounded-xl border border-slate-200 px-3 py-2 text-sm transition hover:bg-slate-50">
+                            {{ choice.tag }}
+                            <span>{{ choice.choice_label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+                {% for error in form.mode.errors %}
+                    <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <label class="flex items-start gap-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                {{ form.confirm }}
+                <span>{{ form.confirm.label }} {% trans "— нужна только для режима «Полностью заменить»" %}</span>
+            </label>
+            {% for error in form.non_field_errors %}
+                <p class="text-xs text-rose-600">{{ error }}</p>
+            {% endfor %}
+            <button type="submit"
+                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                {% trans "Восстановить" %}
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="mt-6 rounded-2xl border border-slate-200 bg-white/60 p-4 text-sm text-slate-500">
+    <p class="font-medium text-slate-700">{% trans "Как это работает" %}</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5">
+        <li>{% trans "«Добавить и обновить» — безопасный режим: данные из файла добавляются, существующие обновляются, ничего не удаляется." %}</li>
+        <li>{% trans "«Полностью заменить» — сначала удаляются все ученики, программы, группы, расписание, посещаемость и пользователи (учётные записи не удаляются: они только добавляются и обновляются), затем данные загружаются из файла." %}</li>
+        <li>{% trans "Суперпользователи из файла не создаются: главного администратора всегда создают командой" %} <code>createsuperuser</code>.</li>
+        <li>{% trans "Файл содержит хеши паролей — храните его в защищённом месте." %}</li>
+    </ul>
+</div>
+{% endblock %}

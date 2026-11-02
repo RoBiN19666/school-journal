@@ -1,0 +1,62 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Мои занятия по неделям · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold">{% trans "Мои занятия по неделям" %}</h1>
+    <p class="text-sm text-slate-500">
+        {% blocktrans with monday_date=monday|date:"d.m.Y" week_end_date=week_end|date:"d.m.Y" %}Неделя {{ monday_date }} — {{ week_end_date }}{% endblocktrans %}
+        {% if term %}· {{ term.full_title }}{% endif %}
+        · {% blocktrans with lessons=lessons_total hours=hours_total %}занятий за неделю: {{ lessons }} · академических часов: {{ hours }}{% endblocktrans %}
+    </p>
+    {% if cancelled_hours %}
+        <p class="mt-1 text-sm font-medium text-rose-600">
+            {% blocktrans with hours=cancelled_hours %}отменено: {{ hours }} ч{% endblocktrans %}
+            <span class="font-normal text-slate-500">{% blocktrans with lessons=cancelled_lessons %}· отменённых занятий: {{ lessons }}{% endblocktrans %}</span>
+        </p>
+    {% endif %}
+    <p class="mt-1 text-xs text-slate-400">
+        {% blocktrans %}Темы занятий заполняются здесь. Академические часы считаются
+        автоматически от времени занятия: 1 час = 45 минут.{% endblocktrans %}
+    </p>
+</div>
+
+<div class="mb-4 flex flex-wrap items-center gap-2">
+    {% if prev_allowed %}
+        <a href="?week={{ prev_week }}"
+           class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+            ← {% trans "Предыдущая неделя" %}
+        </a>
+    {% else %}
+        <span title="{% trans 'Это первая неделя полугодия: раньше занятий нет.' %}"
+              aria-disabled="true"
+              class="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-400">
+            ← {% trans "Предыдущая неделя" %}
+        </span>
+    {% endif %}
+    <a href="?week={{ this_week }}"
+       class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+        {% trans "Текущая неделя" %}
+    </a>
+    {% if next_allowed %}
+        <a href="?week={{ next_week }}"
+           class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+            {% trans "Следующая неделя" %} →
+        </a>
+    {% else %}
+        <span title="{% trans 'Это последняя неделя полугодия: дальше занятий нет.' %}"
+              aria-disabled="true"
+              class="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-400">
+            {% trans "Следующая неделя" %} →
+        </span>
+    {% endif %}
+    <a href="{% url 'teacher_export' %}?date_from={{ monday|date:'Y-m-d' }}&date_to={{ week_end|date:'Y-m-d' }}"
+       class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+        {% trans "Выгрузить неделю в Excel" %}
+    </a>
+</div>
+
+{% include "journal/includes/week_table.html" %}
+{% endblock %}

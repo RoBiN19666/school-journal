@@ -1,0 +1,12 @@
+{% load i18n %}
+{% comment %}Значок статуса «отпускать при беспилотной опасности».{% endcomment %}
+{% if student.dismissal_status == 'ЕО' %}
+    <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 whitespace-nowrap"
+          title="{{ student.dismissal_title }}">ЕО · {% trans "можно отпускать" %}</span>
+{% elif student.dismissal_status == 'ЕН' %}
+    <span class="rounded-full bg-rose-50 px-2 py-0.5 text-xs text-rose-700 whitespace-nowrap"
+          title="{{ student.dismissal_title }}">ЕН · {% trans "не отпускать" %}</span>
+{% else %}
+    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 whitespace-nowrap"
+          title="{{ student.dismissal_title }}">Н · {% trans "нет заявления" %}</span>
+{% endif %}

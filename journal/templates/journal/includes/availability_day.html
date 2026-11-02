@@ -1,0 +1,37 @@
+{% load i18n %}
+{% comment %}Карточка одного дня недели в панели свободного времени преподавателя.{% endcomment %}
+<div class="rounded-xl border p-3 {% if highlighted %}border-indigo-300 bg-indigo-50/40{% else %}border-slate-200{% endif %}">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="text-sm font-medium text-slate-700">
+            {{ day.label }}
+            {% if highlighted %}<span class="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700">{% trans "выбран в форме" %}</span>{% endif %}
+        </p>
+        <p class="text-xs text-slate-400">
+            {% if day.busy %}{% blocktrans with count=day.busy|length %}занято: {{ count }}{% endblocktrans %}{% else %}{% trans "занятий нет" %}{% endif %}
+            {% blocktrans with minutes=day.free_minutes %}· свободно {{ minutes }} мин{% endblocktrans %}
+        </p>
+    </div>
+    <div class="mt-2 flex flex-wrap gap-2">
+        {% for window in day.windows %}
+            <button type="button"
+                    data-day="{{ day.value }}"
+                    data-window-start="{{ window.start }}"
+                    data-window-end="{{ window.end }}"
+                    class="free-window rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
+                    title="{% blocktrans with day_label=day.label window_label=window.label %}Подставить {{ day_label }}, {{ window_label }}{% endblocktrans %}">
+                {{ window.label }}
+            </button>
+        {% empty %}
+            <span class="text-xs text-rose-500">{% trans "свободного времени нет" %}</span>
+        {% endfor %}
+    </div>
+    {% if day.busy %}
+        <div class="mt-2 flex flex-wrap gap-2">
+            {% for lesson in day.busy %}
+                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+                    {{ lesson.time }} · {{ lesson.subject }} · {{ lesson.group }}{% if lesson.place %} · {{ lesson.place }}{% endif %}{% if lesson.date_label %} ({{ lesson.date_label }}){% endif %}
+                </span>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

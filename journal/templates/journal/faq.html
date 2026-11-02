@@ -1,0 +1,598 @@
+{% extends "journal/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Справка: что где лежит · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<style>
+    /* Якорь не должен прятаться под липкой шапкой, а последний раздел — под подвалом. */
+    #faq-body [id] { scroll-margin-top: 5.5rem; }
+</style>
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold">{% trans "Справка: что где лежит" %}</h1>
+    <p class="text-sm text-slate-500">
+        {% blocktrans %}Куда нажать, что заполнить и где потом это найти.
+        Разделы — для методиста и для преподавателя.{% endblocktrans %}
+    </p>
+    <div class="mt-4 flex flex-wrap gap-2 text-sm">
+        <a href="#methodist" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 font-medium text-indigo-700 transition hover:bg-indigo-100">{% trans "Методисту" %}</a>
+        <a href="#teacher" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 font-medium text-emerald-700 transition hover:bg-emerald-100">{% trans "Преподавателю" %}</a>
+        <a href="#common" class="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-700 transition hover:bg-slate-50">{% trans "Общие вопросы" %}</a>
+        {% if user.is_admin %}{% if user.is_admin %}<a href="#admin" class="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-700 transition hover:bg-slate-50">{% trans "Администратору" %}</a>{% endif %}{% endif %}
+    </div>
+</div>
+
+<div id="faq-body" class="grid grid-cols-1 gap-6 pb-24 lg:grid-cols-[260px_1fr]">
+    <aside class="lg:sticky lg:top-24 lg:self-start">
+        <nav id="faq-toc" class="rounded-2xl bg-white p-4 text-sm shadow-sm">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{% trans "Содержание" %}</p>
+            <ul class="space-y-1 text-slate-600">
+                <li><a class="hover:text-indigo-700" href="#start">{% trans "С чего начать" %}</a></li>
+                <li class="pt-2 text-xs font-semibold uppercase tracking-wide text-indigo-500">{% trans "Методисту" %}</li>
+                <li><a class="hover:text-indigo-700" href="#m-periods">{% blocktrans %}<span class="text-slate-400">1.</span> Полугодие и адрес{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-students">{% blocktrans %}<span class="text-slate-400">2.</span> Ученики и статус БП{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-import">{% blocktrans %}<span class="text-slate-400">3.</span> Импорт детей из Excel{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-subjects">{% blocktrans %}<span class="text-slate-400">4.</span> Программы и преподаватели{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-groups">{% blocktrans %}<span class="text-slate-400">5.</span> Группы и состав{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-schedule">{% blocktrans %}<span class="text-slate-400">6.</span> Расписание{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-topics">{% blocktrans %}<span class="text-slate-400">7.</span> Темы и часы{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-weeks">{% blocktrans %}<span class="text-slate-400">8.</span> Недели и посещаемость{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-contests">{% blocktrans %}<span class="text-slate-400">9.</span> Участие в конкурсах{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-development">{% blocktrans %}<span class="text-slate-400">10.</span> Повышение квалификации{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-transfer">{% blocktrans %}<span class="text-slate-400">11.</span> Перенос в другое полугодие{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-export">{% blocktrans %}<span class="text-slate-400">12.</span> Выгрузки{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#m-absences">{% blocktrans %}<span class="text-slate-400">13.</span> Отсутствия и подмены{% endblocktrans %}</a></li>
+                <li class="pt-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">{% trans "Преподавателю" %}</li>
+                <li><a class="hover:text-indigo-700" href="#t-login">{% blocktrans %}<span class="text-slate-400">1.</span> Вход и свой пароль{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#t-lessons">{% blocktrans %}<span class="text-slate-400">2.</span> Мои занятия{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#t-marks">{% blocktrans %}<span class="text-slate-400">3.</span> Отметки посещаемости{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#t-topic">{% blocktrans %}<span class="text-slate-400">4.</span> Тема и часы занятия{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#t-week">{% blocktrans %}<span class="text-slate-400">5.</span> По неделям{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#t-bp">{% blocktrans %}<span class="text-slate-400">6.</span> Статусы «отпускать при БП»{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#t-contests">{% blocktrans %}<span class="text-slate-400">7.</span> Участие в конкурсах и повышение квалификации{% endblocktrans %}</a></li>
+                <li><a class="hover:text-indigo-700" href="#t-export">{% blocktrans %}<span class="text-slate-400">8.</span> Своя выгрузка{% endblocktrans %}</a></li>
+                <li class="pt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{% trans "Ещё" %}</li>
+                <li><a class="hover:text-indigo-700" href="#common">{% blocktrans %}<span class="text-slate-400">1.</span> Общие вопросы{% endblocktrans %}</a></li>
+                <li>{% if user.is_admin %}{% if user.is_admin %}<a class="hover:text-indigo-700" href="#admin">{% blocktrans %}<span class="text-slate-400">2.</span> Администратору{% endblocktrans %}</a>{% endif %}{% endif %}</li>
+                <li>{% if user.is_admin %}{% if user.is_admin %}<a class="hover:text-indigo-700" href="#rights">{% blocktrans %}<span class="text-slate-400">3.</span> Кто что видит{% endblocktrans %}</a>{% endif %}{% endif %}</li>
+            </ul>
+        </nav>
+    </aside>
+
+    <div class="min-w-0 space-y-6">
+        <!-- С чего начать -->
+        <section id="start" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-xl font-semibold">{% trans "С чего начать" %}</h2>
+            <div class="mt-3 space-y-3 text-sm text-slate-600">
+                <p>
+                    {% blocktrans %}Журнал живёт в браузере, устанавливать ничего не нужно. Откройте адрес журнала,
+                    который дал администратор, введите логин и пароль — и вы внутри.{% endblocktrans %}
+                </p>
+                <p>
+                    {% blocktrans %}Везде работает одно правило: <span class="font-medium text-slate-800">сначала выберите
+                    год, полугодие и адрес в шапке</span>, потом работайте. То, что вы видите в списках,
+                    относится именно к выбранному полугодию и адресу.{% endblocktrans %}
+                </p>
+                <div class="rounded-xl bg-slate-50 p-4">
+                    <p class="font-medium text-slate-700">{% trans "Три роли" %}</p>
+                    <ul class="mt-2 list-disc space-y-1 pl-5">
+                        <li>{% blocktrans %}<span class="font-medium">Методист (УМО)</span> — ведёт учеников, программы, группы, расписание, смотрит темы и посещаемость, делает выгрузки.{% endblocktrans %}</li>
+                        <li>{% blocktrans %}<span class="font-medium">Преподаватель</span> — видит свои занятия, отмечает посещаемость и записывает темы занятий.{% endblocktrans %}</li>
+                        <li>{% blocktrans %}<span class="font-medium">Администратор</span> — то же, что методист, плюс сотрудники, резервные копии, безопасность и демо-режим.{% endblocktrans %}</li>
+                    </ul>
+                </div>
+                <p class="text-slate-500">
+                    {% blocktrans %}Слева — меню. Ссылки в нём зависят от роли: преподаватель видит «Мои занятия»
+                    и «По неделям», методист — «Ученики», «Программы и группы», «Расписание» и так далее.
+                    Справа сверху, у своего имени, — компактное меню: «Мои данные и оформление»
+                    (ФИО, логин, смена пароля) и выход. Там же выбирается тема оформления: светлая,
+                    тёмная, ночная синяя, тёплая или контрастная. Темы лежат в блоке «Оформление»
+                    на странице «Мои данные». Тема применяется сразу и запоминается для браузера.
+                    На телефоне меню открывается кнопкой с тремя полосками в шапке: оно занимает всю высоту экрана
+                    и закрывается нажатием в любое свободное место или клавишей Escape.
+                    Ползунки прокрутки тоже оформлены в цветах темы.
+                    Сообщения журнала — например, «Сохранено» — появляются всплывающими уведомлениями справа сверху
+                    и через несколько секунд исчезают сами; закрыть можно крестиком. Если на устройстве включено
+                    уменьшение движения, переходы и анимации отключаются — так спокойнее и быстрее.{% endblocktrans %}
+                </p>
+            </div>
+        </section>
+
+        <!-- МЕТОДИСТУ -->
+        <section id="methodist" class="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-6">
+            <h2 class="text-xl font-semibold text-indigo-900">{% trans "Методисту" %}</h2>
+            <p class="mt-1 text-sm text-indigo-900/80">
+                {% blocktrans %}Порядок работы, к которому всё приспособлено: год, полугодие и адрес → программы и преподаватели
+                → группы → ученики → расписание → темы и отметки → выгрузки.{% endblocktrans %}
+            </p>
+        </section>
+
+        <section id="m-periods" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "1. Полугодие и адрес" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}В шапке три «переключалки»: <span class="font-medium">учебный год</span>, <span class="font-medium">полугодие</span> и <span class="font-medium">адрес</span>. Год и полугодие выбираются отдельно: список полугодий зависит от выбранного года.{% endblocktrans %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% trans "В списке годов есть поиск: начните вводить год — список сузится, а Enter выберет первый подходящий вариант." %}</li>
+                    <li>{% trans "Год и полугодия создаются автоматически: 1-е полугодие — 01.09–31.12, 2-е — 01.01–31.05." %}</li>
+                    <li>{% trans "Адреса — «ул. Примерная, 1» и «ул. Вторая, 10». У каждого свой список кабинетов." %}</li>
+                    <li>{% blocktrans %}Даты полугодий можно поправить в разделе <span class="font-medium">«Учебные периоды»</span>: учебные годы там идут плитками по 3–4 в ряд, а список годов выводится постранично.{% endblocktrans %}</li>
+                    <li>{% trans "На телефоне панель компактная: переключатели переносятся на несколько строк, горизонтальной прокрутки нет." %}</li>
+                </ul>
+                <p class="rounded-xl bg-amber-50 px-3 py-2 text-amber-900">
+                    {% blocktrans %}Если «пропала» программа или группа — почти всегда дело в том, что выбрано другое
+                    полугодие или другой адрес.{% endblocktrans %}
+                </p>
+            </div>
+        </section>
+
+        <section id="m-students" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "2. Ученики и статус «отпускать при БП»" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Раздел <span class="font-medium">«Ученики»</span>: добавить, изменить, удалить, найти по фамилии или имени.{% endblocktrans %}</p>
+                <p>{% trans "В таблицах журнала клик по заголовку столбца сортирует список, повторный клик включает обратный порядок. У служебных столбцов с кнопками сортировки нет." %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% blocktrans %}<span class="font-medium">ФИО</span> — обязательны фамилия и имя, отчество можно не заполнять.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}<span class="font-medium">Дата рождения</span> — можно не заполнять.{% endblocktrans %}</li>
+                    <li>
+                        {% blocktrans %}<span class="font-medium">Статус БП</span> — «отпускать ребёнка во время беспилотной опасности»:
+                        <span class="font-mono">Н</span> — нет заявления,
+                        <span class="font-mono">ЕН</span> — есть заявление, не отпускать,
+                        <span class="font-mono">ЕО</span> — есть заявление, можно отпускать.
+                        Статус виден цветным значком в списке учеников и <span class="font-medium">педагогу прямо в журнале отметок</span>.{% endblocktrans %}
+                    </li>
+                    <li>{% trans "В карточке ученика видно, в каких группах он состоит." %}</li>
+                </ul>
+                <p>{% trans "Удаление ученика убирает и его отметки — если ребёнок просто ушёл из группы, лучше убрать его из состава группы, а не удалять карточку." %}</p>
+            </div>
+        </section>
+
+        <section id="m-import" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "3. Импорт детей из Excel" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Раздел <span class="font-medium">«Импорт учеников из Excel»</span> (кнопка «Импорт из Excel» в списке учеников). Файл — .xlsx.{% endblocktrans %}</p>
+                <div class="overflow-x-auto">
+                    <table class="mt-2 w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                            <tr><th class="px-3 py-2">{% trans "Столбец" %}</th><th class="px-3 py-2">{% trans "Что писать" %}</th><th class="px-3 py-2">{% trans "Обязательно" %}</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr><td class="px-3 py-2">{% trans "1-й" %}</td><td class="px-3 py-2">{% trans "ФИО одной строкой: «Иванов Иван Иванович», «Иванов Иван», «Иванов И. И.»" %}</td><td class="px-3 py-2">{% trans "да" %}</td></tr>
+                            <tr><td class="px-3 py-2">{% trans "2-й" %}</td><td class="px-3 py-2">{% trans "Дата рождения: настоящая дата Excel или «01.09.2010»" %}</td><td class="px-3 py-2">{% trans "нет" %}</td></tr>
+                            <tr><td class="px-3 py-2">{% trans "3-й" %}</td><td class="px-3 py-2">{% trans "Статус: Н, ЕН или ЕО (можно словами)" %}</td><td class="px-3 py-2">{% trans "нет" %}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% trans "Столбцы распознаются по содержимому, порядок и лишние столбцы не мешают; шапка, номера строк и пустые строки пропускаются." %}</li>
+                    <li>{% trans "Если даты или статуса нет — ученик всё равно импортируется; в предупреждениях будет сказано, чего не хватило, а статус по умолчанию — «Нет заявления»." %}</li>
+                    <li>{% trans "Перед сохранением показывается разобранный список: дата, статус, пометка «уже в базе»; галочки можно снять — такие строки не импортируются." %}</li>
+                    <li>{% trans "Повторяющиеся не задваиваются: им дописываются только пустые поля." %}</li>
+                    <li>{% trans "Можно сразу выбрать группу — все новые ученики попадут в неё." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="m-subjects" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "4. Программы и преподаватели" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Раздел <span class="font-medium">«Программы и группы»</span>. Программа создаётся внутри выбранного полугодия и адреса — это сделано специально, чтобы в каждом полугодии был свой набор программ.{% endblocktrans %}</p>
+                <p>{% blocktrans %}В карточке программы выбираются основной преподаватель и остальные ведущие — те, кто может вести и подменять. Ведущие отмечаются <span class="font-medium">галочками</span>: сверху есть поиск по фамилии, отмеченные поднимаются вверх списка. Основной преподаватель входит в состав автоматически и помечен подписью «основной». Если программу ведут два преподавателя, это не подмена: подмена отмечается галочкой у конкретного занятия.{% endblocktrans %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% blocktrans %}<span class="font-medium">Основной преподаватель</span> — тот, кто ведёт программу обычно. Он подставляется в занятие по умолчанию. Поиск в его списке появляется сам, если преподавателей больше семи.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}<span class="font-medium">Остальные ведущие</span> — те, кто может вести и подменять.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}Если преподавателя отключили, а он уже назначен программе, занятию или курсу, он остаётся в списке с пометкой <span class="font-medium">«отключён»</span> — старую запись можно сохранить без замены педагога.{% endblocktrans %}</li>
+                    <li>{% trans "Если одна и та же программа нужна на двух адресах — создайте её на каждом адресе." %}</li>
+                </ul>
+                <p>{% blocktrans %}Учётные записи преподавателей — в разделе <span class="font-medium">«Преподаватели»</span>: ФИО, логин, число программ, дата регистрации. В колонке <span class="font-medium">«Активен»</span> видно, работает учётная запись или отключена. Пароль журнал показывает один раз при создании преподавателя — скопируйте его сразу. Учётные записи методистов и администраторов создаются в админке Django.{% endblocktrans %}</p>
+            </div>
+        </section>
+
+        <section id="m-groups" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "5. Группы и состав" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% trans "Группа — это «поток», который ходит на занятия. Группы живут внутри программы." %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% trans "Создать группу: карточка программы → «Добавить группу»." %}</li>
+                    <li>{% blocktrans %}Состав: кнопка <span class="font-medium">«Состав группы»</span> — отметить галочками нужных детей и сохранить. Ученики выводятся страницами («по 10 / 25 / 50 / 100»), а поиск ищет <span class="font-medium">по всей базе</span>, не только по открытой странице; дети группы, которых нет на текущей странице, сохраняются сами.{% endblocktrans %}</li>
+                    <li>{% trans "Ученик может быть в нескольких группах (например, математика и физика)." %}</li>
+                    <li>{% trans "Переименовать или удалить группу можно из карточки программы. Удаление группы убирает её занятия и отметки." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="m-schedule" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "6. Расписание" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Раздел <span class="font-medium">«Расписание»</span>: кнопка «Добавить занятие». У занятия есть группа, день недели, начало и окончание, кабинет и преподаватель, а для разового занятия — ещё и дата. Расписание показано сеткой на неделю или списком по дням.{% endblocktrans %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% trans "Номеров уроков нет: всё определяет время. Окончание подставляется автоматически (+90 минут), можно изменить." %}</li>
+                    <li>{% blocktrans %}<span class="font-medium">Разовое занятие</span>: заполните «Дата разового занятия», если занятие проходит один раз — например, мероприятие. День недели подставится по дате сам, а занятие появится в расписании, в неделях и в календаре группы только в этот день. Если дата пуста, занятие идёт каждую неделю по выбранному дню. Разовые занятия помечаются подписью <span class="text-amber-700">«разовое · 12.10.2026»</span>; при переносе в другое полугодие они не копируются (они привязаны к дате). По разовому занятию можно <span class="font-medium">отметить посещаемость</span> и выгрузить её: страница отметок открывается на его дату, а переходы «неделю назад и вперёд» для него не показываются.{% endblocktrans %}</li>
+                    <li>{% trans "Кабинеты показываются только того адреса, к которому относится группа." %}</li>
+                    <li>{% trans "Журнал проверяет три вещи: кабинет не занят, группа не занята, у преподавателя нет другого занятия в это время (на любом адресе)." %}</li>
+                    <li>{% blocktrans %}Справа на странице занятия видно <span class="font-medium">свободное время преподавателя</span>: зелёные промежутки свободны, по клику время подставляется в форму. Панель пересчитывается на того преподавателя, которого вы выбрали. Смена преподавателя или дня недели обновляет панели <span class="font-medium">сразу, без перезагрузки страницы</span>; смена группы обновляет страницу, потому что от неё зависит список кабинетов.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}<span class="font-medium">Подмена</span> — отметка, что занятие ведёт заменяющий преподаватель: такое занятие помечается словом «подмена». Занятость заменяющего проверяется как обычно, поэтому галочка «Подмена» сама по себе занятое время не разрешает: если занятие нужно провести в уже занятое у заменяющего время, отметьте отдельно «1. Не учитывать занятость преподавателя». Если программу ведут два преподавателя — это не подмена: оба просто ведут программу.{% endblocktrans %}</li>
+                    <li>{% trans "Картинку расписания можно скачать (PNG, вертикально или горизонтально) — в разделе «Выгрузка в Excel»." %}</li>
+                    <li>{% trans "Расписание показывает одну неделю: по умолчанию текущую, листать можно кнопками «Предыдущая неделя / Текущая неделя / Следующая неделя» — внутри полугодия, на границах кнопки неактивны. Разовые занятия и подмены видны только в свою неделю, а пометка «отсутствует: …» — по показанной неделе. Выбранные неделя и вид (сетка или список) сохраняются." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="m-topics" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "7. Темы занятий и академические часы" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Темы заполняют преподаватели — в разделе «По неделям: темы и часы». На странице самого занятия тема только показывается. Часы считаются сами: <span class="font-medium">1 академический час = 45 минут</span> (занятие 10:00–11:30 = 2 акад. часа).{% endblocktrans %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% blocktrans %}Посмотреть: раздел <span class="font-medium">«Темы занятий»</span> — сразу все темы с фильтрами по группе, преподавателю и датам, с итогом по академическим часам.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}Там же кнопка <span class="font-medium">«Выгрузить в Excel»</span> — выгрузка учитывает выбранные фильтры.{% endblocktrans %}</li>
+                    <li>{% trans "Заполнить или поправить тему может и методист — в разделе «Посещаемость»." %}</li>
+                    <li>{% trans "Если тема не сохранена, занятие в неделях помечается как «не отмечено» — это видно и методисту, и преподавателю." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="m-weeks" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "8. Недели и посещаемость" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Раздел <span class="font-medium">«Посещаемость»</span> — рабочая лошадка методиста.{% endblocktrans %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% trans "Показывает выбранную неделю: занятия по дням, темы, часы, кто был и кого не было." %}</li>
+                    <li>{% trans "Фильтры: группа, программа, преподаватель и неделя (кнопки «Предыдущая неделя», «Текущая неделя», «Следующая неделя»)." %}</li>
+                    <li>{% blocktrans %}Отметки: <span class="font-mono">Присутствовал</span>, <span class="font-mono">Отсутствовал</span>, <span class="font-mono">Опоздал</span> — итоги видно по каждому занятию. Рядом есть поле темы и кнопка «Отметить», которая открывает журнал отметок этого дня.{% endblocktrans %}</li>
+                    <li>{% trans "Рядом с каждым учеником виден статус БП (ЕО / ЕН / Н)." %}</li>
+                    <li>{% trans "Листать недели можно только внутри полугодия: на первой неделе кнопка «Предыдущая неделя», на последней — «Следующая неделя» серые, без ссылки. Неделя из старой ссылки приводится к ближайшей допустимой — с подсказкой «Эта неделя вне полугодия». То же на странице преподавателя «По неделям: темы и часы»." %}</li>
+                    <li>{% trans "Выгрузка недели в Excel — кнопкой на той же странице." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="m-contests" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "9. Участие в конкурсах" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Раздел <span class="font-medium">«Участие в конкурсах»</span>: дата, название мероприятия, ФИО ученика, статус (победитель, призёр, участник), направление и комментарий.{% endblocktrans %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% trans "Фильтры: поиск по мероприятию, ученику и направлению, статус, период дат." %}</li>
+                    <li>{% trans "Выгрузка в Excel: лист с записями и лист «Сводка» (сколько победителей, призёров, участников)." %}</li>
+                    <li>{% trans "Преподаватель видит свои записи и успехи своих учеников у себя в «Моих занятиях»." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="m-development" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "10. Повышение квалификации педагогов" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Раздел <span class="font-medium">«Повышение квалификации»</span> (страница «Повышение квалификации педагогов»): дата, вид (повышение квалификации, конкурс, другое), педагог, название программы, образовательная организация, часы, результат.{% endblocktrans %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% trans "Фильтры по виду и педагогу, поиск по программе, организации и педагогу." %}</li>
+                    <li>{% trans "Выгрузка в Excel со строкой «Итого часов»." %}</li>
+                    <li>{% trans "Преподаватель видит только свои записи, правит и удаляет их сам. Поле выбора педагога у него отсутствует — запись оформляется на него автоматически. Методист ведёт записи всех педагогов." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="m-transfer" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "11. Перенос данных в другое полугодие или адрес" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Раздел <span class="font-medium">«Учебные периоды»</span> → кнопка <span class="font-medium">«Перенести из другого полугодия»</span>. Она есть и в списке программ, и в расписании, и в карточке программы. Выбираете, откуда и куда переносить.{% endblocktrans %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% trans "Переносятся программы, группы, занятия; по желанию — состав групп." %}</li>
+                    <li>{% trans "Преподаватели программы и пометка подмены сохраняются." %}</li>
+                    <li>{% trans "Занятия, которые не встают из-за конфликта по времени, пропускаются — в отчёте будет сказано, сколько." %}</li>
+                    <li>{% trans "Повторный перенос не задваивает: существующие группы переиспользуются." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="m-export" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "12. Выгрузки" %}</h2>
+            <div class="mt-3 text-sm text-slate-600">
+                <p>{% blocktrans %}Раздел <span class="font-medium">«Выгрузка в Excel»</span>. Все выгрузки — файлы .xlsx, открываются в Excel, «Мой офис», LibreOffice:{% endblocktrans %}</p>
+                <ul class="mt-2 list-disc space-y-1 pl-5">
+                    <li>{% trans "ученики (с датой рождения, статусом БП и группами);" %}</li>
+                    <li>{% trans "программы и группы выбранного полугодия и адреса;" %}</li>
+                    <li>{% trans "расписание — и Excel, и картинкой PNG (вертикально/горизонтально);" %}</li>
+                    <li>{% trans "посещаемость (с темой, часами и колонкой БП);" %}</li>
+                    <li>{% trans "темы занятий с итогом по академическим часам;" %}</li>
+                    <li>{% trans "участие в конкурсах со сводкой по статусам;" %}</li>
+                    <li>{% trans "повышение квалификации педагогов с итогом часов." %}</li>
+                </ul>
+                <p class="mt-2">{% trans "В шапке выгрузки указывается организация, адрес и полугодие — файл можно сразу отправлять наружу." %}</p>
+            </div>
+        </section>
+
+        <section id="m-absences" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "13. Отсутствия преподавателей и подмены" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Если преподаватель заболел или уехал в командировку, отметьте период в разделе <span class="font-medium">«Отсутствия»</span> — это подраздел «Преподавателей» в меню слева.{% endblocktrans %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% blocktrans %}<span class="font-medium">«С» и «По»</span> — границы периода: обе даты входят в него.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}<span class="font-medium">«Причина»</span> — «Больничный», «Командировка» или «Другое»; примечание можно не заполнять.{% endblocktrans %}</li>
+                    <li>{% trans "Нажмите «Добавить отсутствие», выберите преподавателя и период и сохраните — запись появится в списке раздела, а убрать её можно кнопкой «Удалить»." %}</li>
+                    <li>{% trans "Быстрее всего — из списка «Преподаватели»: кнопка «Отсутствие» открывает форму с уже выбранным преподавателем. В карточке преподавателя осталась строка «Отсутствует: …» со ссылкой «Отсутствия» и кнопкой «Поставить подмену»." %}</li>
+                    <li>{% trans "Отмечают отсутствия методист и администратор: преподаватель период себе поставить не может." %}</li>
+                    <li>{% trans "Периоды одного преподавателя не должны пересекаться, а дата «По» не может быть раньше даты «С» — такую запись журнал не сохранит." %}</li>
+                </ul>
+                <p>{% blocktrans %}Занятия, попавшие в период отсутствия, считаются <span class="font-medium">отменёнными</span>.{% endblocktrans %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% blocktrans %}В «Посещаемости по неделям» и в «По неделям: темы и часы» у занятия стоит пометка «занятие отменено», а его часы вынесены в отдельную строку «отменено: N ч» — в общий итог они не входят.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}На странице отметок сверху видна красная плашка «Отсутствие: …», переключатели отметок и кнопка сохранения выключены: за эти дни посещаемость не ставится.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}В расписании рядом с преподавателем появляется «отсутствует: Больничный 13.01.2025–17.01.2025», а в выгрузке расписания (Excel) — колонка «Отсутствие преподавателя» с периодом.{% endblocktrans %}</li>
+                    <li>{% trans "Уже поставленные отметки не удаляются — они просто не учитываются. Если период удалить, занятия снова станут обычными, а часы вернутся в итог." %}</li>
+                </ul>
+                <p>{% blocktrans %}<span class="font-medium">Как поставить подмену.</span> Из карточки отсутствующего преподавателя кнопка «Поставить подмену» открывает недельный журнал на неделю отсутствия, а рядом с отменённым занятием в «Посещаемости по неделям» — форму нового занятия: группа, кабинет, день, дата и время уже заполнены, галочка «Подмена» уже отмечена — останется выбрать заменяющего. Вручную то же занятие создаётся в разделе «Расписание» кнопкой «Добавить занятие»: заполните группу, время и кабинет, в поле «Дата разового занятия» укажите дату из периода отсутствия, а в поле «Преподаватель занятия» выберите заменяющего.{% endblocktrans %}</p>
+                <p>{% blocktrans %}Занятость отсутствующего преподавателя подмене не мешает: в этот день он занятий не ведёт, поэтому подмену можно поставить даже на его обычное время. Занятость заменяющего, кабинет и группа проверяются как всегда. Если заменяющий в это время уже занят и подмена осознанная, отметьте галочку «1. Не учитывать занятость преподавателя»: галочка «2. Подмена (заменяющий преподаватель)» только помечает занятие значком «подмена» и проверку по времени не снимает.{% endblocktrans %}</p>
+                <p>{% blocktrans %}<span class="font-medium">Подмены сразу на весь период.</span> В строке периода есть кнопка <span class="font-medium">«Подмены»</span>: страница показывает все занятия преподавателя в периоде по датам — и обычные, и разовые. Сверху можно выбрать <span class="font-medium">«Один заменяющий на все дни»</span> — он подставится во все строки; лишние строки снимаются галочкой «Ставить». Конфликты видно сразу: строка подсвечена и написано, что мешает («Занят: …», «Кабинет … занят», «У группы уже есть занятие», «Заменяющий отсутствует в этот день»). Занятость заменяющего снимается галочкой «Не учитывать занятость» у этой строки, занятость кабинета и группы — нет. Повторный запуск дублей не создаёт: журнал пишет «Уже стояли подмены», а после сохранения — «Создано подмен: N, пропущено: M.» и возвращает в «Отсутствия».{% endblocktrans %}</p>
+                <p>{% blocktrans %}<span class="font-medium">Раздел «Подмены».</span> Под «Отсутствиями» в меню есть подраздел <span class="font-medium">«Подмены»</span> — список уже поставленных подмен. Там видно дату, время, группу, кабинет, кто ведёт и <span class="font-medium">кого заменяет</span> (с периодом отсутствия), есть фильтры по заменяющему, заменяемому, датам и группе, а в строке — кнопки «Отметки» и «Изменить». Создавать подмены здесь нельзя: только смотреть и находить.{% endblocktrans %}</p>
+                <p>{% blocktrans %}<span class="font-medium">Отметки на подмене.</span> Подмена — обычное занятие на конкретную дату, поэтому отметки на ней доступны: их ставит сотрудник УМО и сам заменяющий, тема тоже сохраняется. Часы подмены идут заменяющему, а у отсутствующего занятие по-прежнему исключено («отменено: N ч»). Заменяющий на своих страницах видит подпись <span class="font-medium">«Подмена для Иванов И. И. · Больничный с 05.10.2026 по 11.10.2026»</span>; у отсутствующего этого занятия нет. Поставить подмену тому, кто сам отсутствует в этот день, журнал не даст — форма напишет «‹ФИО› отсутствует ‹дата›: …».{% endblocktrans %}</p>
+                <p>{% blocktrans %}<span class="font-medium">Кого заменяют.</span> Журнал хранит это у самого занятия: поле «3. Кого заменяют (для подмены)» в форме занятия (можно не заполнять) и подпись «Подмена для …» в журналах берутся оттуда — даже если исходное занятие потом перенесли. У старых подмен поле пустое, и подпись по-прежнему ищется по совпадению группы, даты и времени.{% endblocktrans %}</p>
+                <p>{% blocktrans %}<span class="font-medium">Кто может вести занятие.</span> Только преподаватель программы — основной или дополнительный из карточки программы (раздел «Программы», блок «Преподаватели программы»). Чужого преподавателя ни форма занятия, ни список заменяющих в строке не примут: «‹ФИО› не ведёт программу «‹название›»». Уже стоящие занятия с прежним преподавателем при этом правятся и сохраняются как есть, пока преподавателя не меняют.{% endblocktrans %}</p>
+            </div>
+        </section>
+
+        <!-- ПРЕПОДАВАТЕЛЮ -->
+        <section id="teacher" class="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-6">
+            <h2 class="text-xl font-semibold text-emerald-900">{% trans "Преподавателю" %}</h2>
+            <p class="mt-1 text-sm text-emerald-900/80">
+                {% trans "Вам нужны всего три раздела: «Мои занятия», страница отметок и «По неделям: темы и часы»." %}
+            </p>
+        </section>
+
+        <section id="t-login" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "1. Вход и свой пароль" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Вход в журнал — по логину и паролю. Логин и пароль выдаёт методист. Нажмите на <span class="font-medium">своё имя справа сверху</span> — откроется компактное меню с пунктом «Мои данные и оформление» (ФИО, логин, смена пароля) и выходом. Темы журнала выбираются на той же странице, в блоке «Оформление» внизу.{% endblocktrans %}</p>
+                <p>{% blocktrans with remember_days=remember_days session_hours=session_hours %}На странице входа есть галочка <span class="font-medium">«Сохранить вход на {{ remember_days }} дней»</span> — ставьте её только на своём компьютере. Без галочки вход действует {{ session_hours }} часов без активности. Закрытие браузера вход не сбрасывает: сессия живёт по сроку, а не до закрытия окна.{% endblocktrans %}</p>
+                <p>{% trans "Смена пароля автоматически закрывает все прежние входы, в том числе «сохранённые» — это защита на случай, если пароль узнал кто-то ещё." %}</p>
+                <p>{% trans "Забыли пароль — попросите методиста: он задаёт новый пароль в вашей карточке в разделе «Преподаватели». Что происходило со входами, видно в журнале входов." %}</p>
+            </div>
+        </section>
+
+        <section id="t-lessons" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "2. Мои занятия" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% blocktrans %}Главная страница — <span class="font-medium">«Мои занятия»</span>: расписание по дням недели на текущее полугодие, с датами.{% endblocktrans %}</li>
+                    <li>{% trans "Нажмите на занятие — откроется страница отметок именно этого дня недели: дата занятия подставляется сама. У разового занятия страница всегда открывается на его дату." %}</li>
+                    <li>{% trans "Если у вас есть занятия в другом полугодии, наверху будет подсказка и переключатель полугодия в шапке." %}</li>
+                    <li>{% blocktrans %}Пометка <span class="text-amber-600">«подмена»</span> значит, что это занятие вы ведёте как заменяющий. Рядом написано, <span class="font-medium">кого вы заменяете</span> и на какой период: «Подмена для Иванов И. И. · Больничный с 05.10.2026 по 11.10.2026». Отметки и тему на такой карточке заполняют как обычно.{% endblocktrans %}</li>
+                    <li>{% trans "Внизу страницы — ваше повышение квалификации и успехи ваших учеников в конкурсах." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="t-marks" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "3. Отметки посещаемости" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% blocktrans %}На странице занятия <span class="font-medium">календарь занятий группы</span> развёрнут во всю ширину и сворачивается нажатием на заголовок (выбранное состояние запоминается): зелёные дни — когда у группы есть занятие (в том числе другие дни недели и другое время), текущий выделен синим, рядом видно всё расписание группы. Нажмите на зелёный день — откроется то занятие, страница не перезагружается.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}Если выбрать день, в который занятия нет, журнал откроет ближайшее и объяснит это: в сообщении будут и ваша дата, и показанная. Такой день в календаре отмечается <span class="text-amber-700">жёлтой рамкой</span>.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}Страницы обновляются <span class="font-medium">без перезагрузки</span>: выбор дня, переходы между занятиями, поиск и фильтры срабатывают мгновенно. Если JavaScript выключен, всё работает обычными переходами.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}Отметки сохраняет кнопка <span class="font-medium">«Сохранить посещаемость»</span>. Тема занятия на этой странице только <span class="font-medium">показывается</span> — меняется она в разделе «По неделям: темы и часы» (кнопка «Тема — в разделе „По неделям“»).{% endblocktrans %}</li>
+                    <li>{% trans "Отмечать можно только свои занятия: чужие журнал не откроет." %}</li>
+                    <li>{% trans "Наверху страницы видно, к какой программе, группе, адресу и кабинету относится занятие." %}</li>
+                    <li>{% trans "На телефоне таблица отметок компактная: короткие заголовки столбцов — «Был», «Нет», «Опозд.», горизонтальной прокрутки нет. Кнопка «Сохранить посещаемость» прилипает к низу экрана." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="t-topic" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "4. Тема занятия и академические часы" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% blocktrans %}Поле <span class="font-medium">«Тема занятия»</span> — коротко, что прошли: «Обыкновенные дроби», «Лабораторная работа №3».{% endblocktrans %}</li>
+                    <li>{% blocktrans %}Заполняются и правятся темы в разделе <span class="font-medium">«По неделям: темы и часы»</span> — у каждого занятия там своё поле. На странице занятия тема только показывается, чтобы отметки и темы не путались.{% endblocktrans %}</li>
+                    <li>{% blocktrans %}Часы не вводите руками: они считаются от времени занятия, <span class="font-medium">1 академический час = 45 минут</span>. Занятие 10:00–11:30 — это 2 акад. часа.{% endblocktrans %}</li>
+                    <li>{% trans "Тема привязана к дате: у одного и того же занятия в разные дни могут быть разные темы." %}</li>
+                    <li>{% trans "Темы и часы видит методист и попадают в выгрузки — это отчётность организации, поэтому старайтесь заполнять их сразу." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="t-week" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "5. По неделям: темы и часы" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>{% blocktrans %}Раздел <span class="font-medium">«По неделям: темы и часы»</span> показывает всю вашу неделю: занятия по дням, темы, часы, кто был и кого не было.{% endblocktrans %}</li>
+                    <li>{% trans "Здесь удобно быстро записать темы за неделю — поле есть у каждого занятия, отмечать посещаемость можно там же (ссылка «Отметки и тема»)." %}</li>
+                    <li>{% trans "Подмена видна с подписью «Подмена для Иванов И. И. · Больничный с 05.10.2026 по 11.10.2026»: сразу понятно, кого вы заменяете и на какой период. Отметки и тема на подмене сохраняются как на обычном занятии." %}</li>
+                    <li>{% trans "Кнопки «раньше/позже» переключают недели внутри полугодия: на первой неделе «раньше» неактивна, на последней — «позже». Неделя из старой ссылки открывается ближайшей допустимой." %}</li>
+                    <li>{% trans "Кнопка выгрузки сохраняет неделю в Excel." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="t-bp" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "6. Статусы «отпускать при беспилотной опасности»" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% trans "В журнале отметок рядом с каждым учеником стоит значок:" %}</p>
+                <div class="flex flex-wrap gap-2">
+                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">{% trans "ЕО · можно отпускать" %}</span>
+                    <span class="rounded-full bg-rose-50 px-3 py-1 text-xs text-rose-700">{% trans "ЕН · не отпускать" %}</span>
+                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">{% trans "Н · нет заявления" %}</span>
+                </div>
+                <ul class="mt-2 list-disc space-y-1 pl-5">
+                    <li>{% trans "Это сведения о заявлении родителей: можно ли отпустить ребёнка домой во время беспилотной опасности." %}</li>
+                    <li>{% trans "Статус ставит методист — вы его только видите и по нему действуете." %}</li>
+                    <li>{% trans "Если считаете, что статус неверный, скажите методисту: поправить самостоятельно нельзя." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="t-contests" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "7. Участие в конкурсах и своё повышение квалификации" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% trans "Эти два раздела ведёте и вы — методист видит всё, что заполнили преподаватели." %}</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li>
+                        {% blocktrans %}<span class="font-medium">«Участие в конкурсах»</span>: дата, название мероприятия, ученик
+                        и результат — победитель, призёр или участник. Из списка учеников доступны только
+                        дети ваших групп. Вы видите и правите <span class="font-medium">только свои записи</span>,
+                        удаляет записи методист.{% endblocktrans %}
+                    </li>
+                    <li>
+                        {% blocktrans %}<span class="font-medium">«Повышение квалификации»</span>: дата, вид (курсы или конкурс),
+                        название программы, образовательная организация, часы и результат. Запись оформляется
+                        на вас: поля выбора педагога у вас нет. Свои записи можно править и удалять: это записи
+                        о ваших курсах и конкурсах. Методист видит и ведёт записи всех педагогов.{% endblocktrans %}
+                    </li>
+                    <li>{% trans "В обеих таблицах есть кнопка «Excel» — выгружаются ваши записи." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="t-export" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "8. Своя выгрузка посещаемости" %}</h2>
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+                <p>{% blocktrans %}Кнопка <span class="font-medium">«Выгрузить посещаемость в Excel»</span> есть в «Моих занятиях» и на странице отметок — отдельного пункта в меню для неё нет.{% endblocktrans %}</p>
+                <p>{% trans "В файле: дата, время, программа, группа, кабинет, тема, академические часы, статус каждого ученика и сводка «часов посещено». Выгрузка за неделю — на странице «По неделям: темы и часы»." %}</p>
+            </div>
+        </section>
+
+        <!-- ОБЩИЕ -->
+        <section id="common" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-xl font-semibold">{% trans "Общие вопросы" %}</h2>
+            <div class="mt-4 space-y-4 text-sm text-slate-600">
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Не вижу нужную программу, группу или ученика" %}</p>
+                    <p>{% blocktrans %}Проверьте <span class="font-medium">год, полугодие и адрес в шапке</span> — 9 из 10 таких случаев именно в этом. Программы и группы принадлежат полугодию и адресу.{% endblocktrans %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Страница показала ошибку сервера" %}</p>
+                    <p>{% trans "Обновите страницу (F5). Если повторилось — напишите администратору: он посмотрит журнал и причину. Обычно помогает и повторное открытие через минуту." %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Не даёт поставить занятие" %}</p>
+                    <p>{% trans "Журнал не разрешает накладки: тот же кабинет, та же группа или тот же преподаватель в это время. Поменяйте время или кабинет; если занятие осознанно ставится в занятое у преподавателя время (например, при подмене), отметьте галочку «1. Не учитывать занятость преподавателя». Галочка «Подмена» проверку по времени не снимает — она только помечает занятие значком «подмена»." %}</p>
+                    <p>{% trans "У разового занятия накладка считается только на его дату: два мероприятия в один день недели, но на разные даты, друг другу не мешают. А вот обычное занятие этого дня недели и разовое на ту же дату в одно время — накладка." %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Как считается академический час" %}</p>
+                    <p>{% trans "1 академический час = 45 минут. Часы вычисляются автоматически из времени занятия, вручную их вводить не нужно." %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Где посмотреть, что происходило со входами" %}</p>
+                    <p>{% trans "В журнале входов: он ведёт список входов и заходов в журнал. Смотрит его администратор; свой вопрос о доступе адресуйте ему или методисту." %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Нужен ли интернет для работы журнала" %}</p>
+                    <p>{% blocktrans %}Нет. Журнал полностью автономен: оформление, библиотеки, шрифты для картинок и база данных
+                        находятся на самом сервере (в контейнерах), наружу он ничего не запрашивает.
+                        Работает и в закрытой сети без выхода в интернет. Наружу уходят только те письма-уведомления,
+                        которые вы включите в разделе «Безопасность».{% endblocktrans %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Где хранится выбранная тема" %}</p>
+                    <p>{% blocktrans %}В cookie браузера, срок — год. Поэтому после перезапуска компьютера и браузера тема
+                        сохраняется, а сбрасывается только если почистить cookie или зайти в режиме
+                        инкогнито. На другом компьютере тему нужно выбрать заново — она хранится
+                        в браузере, а не в учётной записи.{% endblocktrans %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Сколько держится вход в журнал" %}</p>
+                    <p>{% blocktrans with session_hours=session_hours remember_days=remember_days remember_days_2=remember_days %}Обычный вход — {{ session_hours }} часов без активности. С галочкой
+                        «Сохранить вход на {{ remember_days }} дней» на странице входа — {{ remember_days_2 }} дней.
+                        Закрытие браузера вход не сбрасывает. Смена пароля закрывает все прежние входы.{% endblocktrans %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Что видно без входа в журнал" %}</p>
+                    <p>{% trans "Только справка (эта страница), «О продукте» и — если включён — демо-режим. Всё остальное требует входа: без пароля нельзя ни увидеть данные, ни что-либо изменить. Меню и выбор полугодия появляются, когда вы вошли." %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Вход не проходит" %}</p>
+                    <p>{% trans "Проверьте раскладку клавиатуры и регистр букв в логине. Если вход всё равно не проходит, подождите несколько минут и попробуйте снова; не помните пароль — попросите методиста задать новый." %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Демо-режим" %}</p>
+                    <p>{% blocktrans %}Это витрина для показа журнала без пароля: ученики, расписание и отметки — выдуманные. Год, полугодие и адрес здесь можно выбрать, страницы открываются и работают как обычно, но <span class="font-medium">ничего не сохраняется</span>. Демонстрационные данные лежат в <span class="font-medium">отдельной базе</span> и в рабочий журнал не попадают.{% endblocktrans %}</p>
+                    <p class="mt-2">{% trans "Наполнение демонстрации нарочно разнообразное: несколько десятков учеников, программы по разным направлениям, группы с разным составом, заполненное расписание на неделю вместе с разовыми занятиями, отметки за несколько недель (есть отсутствия и опоздания), участие в конкурсах и повышение квалификации педагогов. Этого хватает, чтобы показать журнал целиком, не заводя данные вручную." %}</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- АДМИНИСТРАТОРУ -->
+{% if user.is_admin %}
+        <section id="admin" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-xl font-semibold">{% trans "Администратору" %}</h2>
+            <div class="mt-4 space-y-3 text-sm text-slate-600">
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Сотрудники УМО" %}</p>
+                    <p>{% trans "Раздел «Сотрудники УМО» — создание учётных записей методистов, смена их паролей и данных. Учётные записи преподавателей ведутся отдельно, в разделе «Преподаватели»: там же создаётся логин." %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Резервная копия" %}</p>
+                    <p>{% blocktrans %}«Резервная копия» → «Скачать резервную копию»: один файл со всеми данными журнала — учениками, программами, группами, расписанием, отметками, темами, конкурсами и повышением квалификации. Копию можно зашифровать парольной фразой: файл скачается как <span class="font-mono">.json.enc</span> и без фразы не читается; при восстановлении фраза спрашивается снова. Восстановление — там же, два режима: «Добавить и обновить» (ничего не удаляет) и «Полностью заменить» (с подтверждением). Копии, скачанные раньше, тоже принимаются.{% endblocktrans %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Входы и безопасность" %}</p>
+                    <p>{% trans "Раздел «Безопасность»: журнал заходов и входов и почтовые уведомления о входах. Журнал заходов можно очистить отдельной кнопкой — сами входы и события при этом остаются." %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Демо-режим и демо-данные" %}</p>
+                    <p>{% blocktrans %}Раздел «Демо-режим и демо-данные»: состояние демонстрационной базы, её содержимое и кнопка очистки. Демонстрация работает в <span class="font-medium">отдельной базе</span> и рабочий журнал не затрагивает; данные создадутся заново при следующем входе в демонстрацию.{% endblocktrans %}</p>
+                    <p class="mt-2">{% blocktrans %}Логотип, фавикон и другие загруженные файлы лежат в папке <span class="font-mono">media</span> и сохраняются между обновлениями журнала.{% endblocktrans %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Проверка журнала после обновления" %}</p>
+                    <p>{% blocktrans %}Убедиться, что всё на месте, можно одной командой на сервере:
+                        <span class="font-mono">docker compose exec web python manage.py healthcheck</span>.
+                        Она проверяет базу и применённые миграции, файлы оформления, шаблоны,
+                        темы, права на запись в папку загрузок и целостность данных о разовых
+                        занятиях. В конце — строка «Проверок: 11, ошибок: 0»; если что-то не так,
+                        будет видно, что именно.{% endblocktrans %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Обновить демонстрационные данные" %}</p>
+                    <p>{% blocktrans %}Демонстрация живёт в <span class="font-medium">отдельной базе</span>,
+                        поэтому её можно пересобрать в любой момент, не задев рабочий журнал.
+                        На сервере: <span class="font-mono">docker compose exec web python manage.py clear_demo</span>,
+                        затем <span class="font-mono">docker compose exec web python manage.py demo_setup</span>.
+                        Кнопка очистки есть и в разделе «Демо-режим и демо-данные».{% endblocktrans %}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800">{% trans "Обновление" %}</p>
+                    <p>{% trans "Журнал обновляется целиком, вместе с базой: после запуска новой сборки изменения базы применяются автоматически. Перед обновлением стоит скачать резервную копию — раздел «Резервная копия»." %}</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ПРАВА -->
+        <section id="rights" class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-xl font-semibold">{% trans "Кто что видит" %}</h2>
+            <div class="mt-3 overflow-x-auto">
+                <table class="w-full min-w-[620px] text-left text-sm">
+                    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                        <tr>
+                            <th class="px-4 py-3">{% trans "Раздел" %}</th>
+                            <th class="px-4 py-3">{% trans "Методист" %}</th>
+                            <th class="px-4 py-3">{% trans "Преподаватель" %}</th>
+                            <th class="px-4 py-3">{% trans "Администратор" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-600">
+                        <tr><td class="px-4 py-2">{% trans "Ученики, программы, группы" %}</td><td class="px-4 py-2">{% trans "ведёт" %}</td><td class="px-4 py-2">—</td><td class="px-4 py-2">{% trans "ведёт" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Темы занятий (общий список)" %}</td><td class="px-4 py-2">{% trans "смотрит и выгружает" %}</td><td class="px-4 py-2">—</td><td class="px-4 py-2">{% trans "смотрит и выгружает" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Расписание" %}</td><td class="px-4 py-2">{% trans "ведёт" %}</td><td class="px-4 py-2">{% trans "свои занятия" %}</td><td class="px-4 py-2">{% trans "ведёт" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Отсутствия преподавателей" %}</td><td class="px-4 py-2">{% trans "ведёт" %}</td><td class="px-4 py-2">—</td><td class="px-4 py-2">{% trans "ведёт" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Подмены (список)" %}</td><td class="px-4 py-2">{% trans "смотрит и ищет" %}</td><td class="px-4 py-2">—</td><td class="px-4 py-2">{% trans "смотрит и ищет" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Отметки и темы" %}</td><td class="px-4 py-2">{% trans "смотрит и правит" %}</td><td class="px-4 py-2">{% trans "свои занятия" %}</td><td class="px-4 py-2">{% trans "смотрит и правит" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Недели и посещаемость" %}</td><td class="px-4 py-2">{% trans "все" %}</td><td class="px-4 py-2">{% trans "свои" %}</td><td class="px-4 py-2">{% trans "все" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Участие в конкурсах" %}</td><td class="px-4 py-2">{% trans "ведёт и видит все" %}</td><td class="px-4 py-2">{% trans "добавляет и правит свои записи (удаляет методист)" %}</td><td class="px-4 py-2">{% trans "ведёт и видит все" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Повышение квалификации" %}</td><td class="px-4 py-2">{% trans "ведёт и видит все" %}</td><td class="px-4 py-2">{% trans "добавляет, правит и удаляет свои записи" %}</td><td class="px-4 py-2">{% trans "ведёт и видит все" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Выгрузки Excel" %}</td><td class="px-4 py-2">{% trans "все" %}</td><td class="px-4 py-2">{% trans "свои занятия, неделя, свои записи о конкурсах и курсах" %}</td><td class="px-4 py-2">{% trans "все" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Сотрудники УМО, резервная копия, безопасность, демо-режим" %}</td><td class="px-4 py-2">—</td><td class="px-4 py-2">—</td><td class="px-4 py-2">{% trans "ведёт" %}</td></tr>
+                        <tr><td class="px-4 py-2">{% trans "Кастомизация (название, логотип, фавикон, срок сессии)" %}</td><td class="px-4 py-2">—</td><td class="px-4 py-2">—</td><td class="px-4 py-2">{% trans "только главный администратор" %}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-3 text-sm text-slate-500">
+                {% blocktrans %}Свои данные и пароль может менять каждый — в меню у своего имени справа сверху,
+                там же выбирается тема оформления. Справка, страница «О продукте» и вход доступны всем,
+                включая тех, кто ещё не вошёл.{% endblocktrans %}
+            </p>
+        </section>
+    </div>
+</div>
+
+{% endif %}
+
+<script src="{% static 'journal/faq.js' %}?v=24" defer></script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% comment %}Поле загрузки картинки с предпросмотром текущего файла.
+
+Заменяет стандартную строку Django «На данный момент: <путь> □ Очистить»:
+маленький квадратик с картинкой, имя файла без папки хранения и «Очистить»
+рядом. Чекбокс остаётся настоящим (имя и id — из ClearableFileInput), поэтому
+очистка работает как раньше. Виджет — journal.forms.BrandingFileInput.{% endcomment %}
+{% if widget.is_initial %}
+    <div data-branding-current class="mb-2 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+        <span class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <img src="{{ widget.value.url }}" alt="" class="h-full w-full object-contain p-0.5">
+        </span>
+        <span class="min-w-0 flex-1 truncate text-xs text-slate-500" title="{{ widget.file_name }}">{{ widget.file_name }}</span>
+        {% if not widget.required %}
+            <label for="{{ widget.checkbox_id }}"
+                   class="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-xs font-medium text-rose-600 transition hover:bg-rose-50">
+                <input type="checkbox" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}"{% if widget.attrs.disabled %} disabled{% endif %}
+                       class="h-3.5 w-3.5 rounded border-slate-300 text-rose-600 focus:ring-rose-400">
+                {{ widget.clear_checkbox_label }}
+            </label>
+        {% endif %}
+    </div>
+{% endif %}
+<input type="{{ widget.type }}" name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}>

@@ -1,0 +1,119 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Отсутствия" %} · {% trans "Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-2xl font-semibold">{% trans "Отсутствия" %}</h1>
+        <p class="text-sm text-slate-500">
+            {% blocktrans with total=total_count %}Всего периодов: {{ total }}{% endblocktrans %}
+        </p>
+    </div>
+    <a href="{% url 'absence_add' %}"
+       class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+        {% trans "Добавить отсутствие" %}
+    </a>
+</div>
+
+<form method="get" class="mb-4 grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 shadow-sm sm:grid-cols-3">
+    <div>
+        <label for="teacher" class="mb-1 block text-xs font-medium text-slate-500">{% trans "Преподаватель" %}</label>
+        <select name="teacher" id="teacher" data-autosubmit
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-indigo-500">
+            <option value="">{% trans "Все преподаватели" %}</option>
+            {% for teacher in teachers %}
+                <option value="{{ teacher.pk }}" {% if selected_teacher == teacher.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ teacher.full_name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="scope" class="mb-1 block text-xs font-medium text-slate-500">{% trans "Период" %}</label>
+        <select name="scope" id="scope" data-autosubmit
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-indigo-500">
+            <option value="actual" {% if scope == "actual" %}selected{% endif %}>{% trans "Только текущие и будущие" %}</option>
+            <option value="all" {% if scope == "all" %}selected{% endif %}>{% trans "Все периоды, включая прошедшие" %}</option>
+        </select>
+    </div>
+    <div class="flex items-end gap-2">
+        <noscript><button type="submit"
+                class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+            {% trans "Показать" %}
+        </button></noscript>
+        <a href="{% url 'absence_list' %}"
+           class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            {% trans "Сбросить" %}
+        </a>
+    </div>
+</form>
+
+<div class="overflow-hidden rounded-2xl bg-white shadow-sm">
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[900px] text-left text-sm">
+            <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                    <th class="px-5 py-3">{% trans "Преподаватель" %}</th>
+                    <th class="px-5 py-3">{% trans "С" %}</th>
+                    <th class="px-5 py-3">{% trans "По" %}</th>
+                    <th class="px-5 py-3">{% trans "Причина" %}</th>
+                    <th class="px-5 py-3">{% trans "Примечание" %}</th>
+                    <th class="px-5 py-3">{% trans "Кто и когда внёс" %}</th>
+                    <th class="px-5 py-3 text-right">{% trans "Действия" %}</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for absence in absences %}
+                    <tr class="odd:bg-white even:bg-slate-50/60 hover:bg-indigo-50/40">
+                        <td class="px-5 py-3 font-medium">
+                            {{ absence.teacher.full_name }}
+                            {% if absence.date_from <= today and absence.date_to >= today %}
+                                <span class="ml-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">{% trans "отсутствует сейчас" %}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-3 whitespace-nowrap text-slate-600">{{ absence.date_from|date:"d.m.Y" }}</td>
+                        <td class="px-5 py-3 whitespace-nowrap text-slate-600">{{ absence.date_to|date:"d.m.Y" }}</td>
+                        <td class="px-5 py-3 text-slate-700">{{ absence.get_kind_display }}</td>
+                        <td class="px-5 py-3 text-slate-500">{{ absence.comment|default:"—" }}</td>
+                        <td class="px-5 py-3 text-slate-500">
+                            {% if absence.created_by %}{{ absence.created_by.full_name }}{% else %}—{% endif %}
+                            <span class="block text-xs text-slate-400">{{ absence.created_at|date:"d.m.Y H:i" }}</span>
+                        </td>
+                        <td class="px-5 py-3">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{% url 'absence_substitutions' absence.pk %}"
+                                   title="{% trans 'Поставить подмены на весь период отсутствия' %}"
+                                   class="rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50">
+                                    {% trans "Подмены" %}
+                                </a>
+                                <a href="{% url 'absence_edit' absence.pk %}"
+                                   class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">
+                                    {% trans "Изменить" %}
+                                </a>
+                                <a href="{% url 'absence_delete' absence.pk %}"
+                                   class="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50">
+                                    {% trans "Удалить" %}
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-5 py-10 text-center text-slate-500">
+                            {% if has_filters %}
+                                {% trans "По выбранным условиям отсутствий нет. Сбросьте фильтры или добавьте новый период." %}
+                            {% else %}
+                                {% trans "Отсутствий пока нет. Нажмите «Добавить отсутствие» — например, когда у преподавателя больничный." %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include "journal/includes/pagination.html" %}
+{% endblock %}

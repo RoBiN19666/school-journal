@@ -1,0 +1,139 @@
+{% load i18n l10n %}
+{% comment %}
+Статистика для администратора: входы в журнал, гистограмма по дням, краткие итоги
+по данным журнала и последние входы. Данные готовит представление DashboardView
+(dashboard_statistics), шаблон только показывает их — блок виден только админам.
+{% endcomment %}
+<div class="mt-6 rounded-2xl bg-white p-5 shadow-sm">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="text-lg font-semibold">{% trans "Статистика" %}</h2>
+            <p class="text-sm text-slate-500">
+                {% blocktrans %}Входы в журнал и краткие итоги. Данные — из журнала событий и разделов журнала.
+                Раздел виден только администраторам.{% endblocktrans %}
+            </p>
+        </div>
+        <a href="{% url 'security' %}" class="text-sm text-indigo-600 hover:text-indigo-700">
+            {% trans "Безопасность и журнал событий →" %}
+        </a>
+    </div>
+    <p class="text-xs text-slate-400">{% blocktrans with today=dashboard_stats.today|date:"d.m.Y" %}По состоянию на {{ today }}.{% endblocktrans %}</p>
+
+    {% if not dashboard_stats.chart_peak and not dashboard_stats.recent_logins %}
+        <p class="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+            {% blocktrans %}Журнал событий пока пуст: входов не зафиксировано. Статистика появится,
+            как только сотрудники начнут входить в журнал.{% endblocktrans %}
+        </p>
+    {% endif %}
+
+    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-sm text-slate-500">{% trans "Входы за сегодня" %}</p>
+            <p class="mt-1 text-3xl font-semibold">{{ dashboard_stats.logins_today }}</p>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-sm text-slate-500">{% trans "Входы за 7 дней" %}</p>
+            <p class="mt-1 text-3xl font-semibold">{{ dashboard_stats.logins_week }}</p>
+            <p class="text-xs text-slate-400">{% trans "считая сегодняшний день" %}</p>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-sm text-slate-500">{% trans "Входы за 30 дней" %}</p>
+            <p class="mt-1 text-3xl font-semibold">{{ dashboard_stats.logins_month }}</p>
+            <p class="text-xs text-slate-400">{% trans "считая сегодняшний день" %}</p>
+        </div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="rounded-xl border border-slate-200 p-4">
+            <p class="text-sm text-slate-500">{% trans "Разных людей входило сегодня" %}</p>
+            <p class="mt-1 text-2xl font-semibold">{{ dashboard_stats.people_today }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 p-4">
+            <p class="text-sm text-slate-500">{% trans "Разных людей входило за 7 дней" %}</p>
+            <p class="mt-1 text-2xl font-semibold">{{ dashboard_stats.people_week }}</p>
+        </div>
+    </div>
+
+    <div class="mt-4 rounded-xl border border-slate-200 p-4">
+        <div class="flex flex-wrap items-end justify-between gap-2">
+            <h3 class="text-sm font-semibold text-slate-700">
+                {% blocktrans with days=dashboard_stats.chart_days %}Входы по дням за {{ days }} дней{% endblocktrans %}
+            </h3>
+            <p class="text-xs text-slate-400">
+                {% blocktrans with total=dashboard_stats.chart_total peak=dashboard_stats.chart_peak %}Всего за период: {{ total }} · самый высокий столбик: {{ peak }}{% endblocktrans %}
+            </p>
+        </div>
+        {% if dashboard_stats.chart_peak %}
+            <div class="mt-4 flex items-end gap-1 sm:gap-2">
+                {% for bar in dashboard_stats.chart %}
+                    <div class="flex min-w-0 flex-1 flex-col items-center gap-1">
+                        <span class="text-[10px] leading-none text-slate-400">{{ bar.count }}</span>
+                        {# Высота контейнера задана и классом h-32, и правилом .dsh-chart в app.css: процент столбика считается только от определённой высоты. #}
+                        <div class="dsh-chart h-32 w-full">
+                            {# unlocalize: без него русская локаль даёт «21,3» с запятой, а в CSS нужна точка — иначе height невалиден. #}
+                            <div class="dsh-chart-bar {% if bar.count %}{% if bar.is_today %}bg-indigo-700{% else %}bg-indigo-500{% endif %}{% else %}bg-slate-200{% endif %}"
+                                 style="height: {{ bar.percent|unlocalize }}%; min-height: 2px;"
+                                 title="{% blocktrans with label=bar.label count=bar.count %}{{ label }} · входов: {{ count }}{% endblocktrans %}"></div>
+                        </div>
+                        <span class="text-[10px] leading-none {% if bar.is_today %}font-semibold text-indigo-700{% else %}text-slate-400{% endif %}">
+                            {{ bar.label }}
+                        </span>
+                        <span class="hidden text-[10px] leading-none text-slate-400 sm:block">{{ bar.weekday }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="mt-3 text-sm text-slate-500">
+                {% blocktrans with days=dashboard_stats.chart_days %}За последние {{ days }} дней входов не было — столбиков нет.{% endblocktrans %}
+            </p>
+        {% endif %}
+    </div>
+
+    <div class="mt-4 rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-semibold text-slate-700">{% trans "Ещё в журнале" %}</h3>
+        <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+            {% for item in dashboard_stats.totals %}
+                <div class="rounded-xl bg-slate-50 p-3">
+                    <p class="text-xs text-slate-500">{{ item.label }}</p>
+                    <p class="mt-1 text-xl font-semibold">{{ item.value }}</p>
+                    {% if item.url %}
+                        <a href="{% url item.url %}" class="text-xs text-indigo-600 hover:text-indigo-700">{% trans "Открыть →" %}</a>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="mt-4 rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-semibold text-slate-700">{% trans "Последние входы" %}</h3>
+        <p class="text-xs text-slate-400">
+            {% blocktrans with limit=dashboard_stats.recent_limit %}До {{ limit }} записей: когда, кто и с какого адреса вошёл.{% endblocktrans %}
+        </p>
+        {% if dashboard_stats.recent_logins %}
+            <div class="mt-3 overflow-x-auto">
+                <table class="w-full min-w-[520px] text-left text-sm">
+                    <thead class="text-xs uppercase tracking-wide text-slate-400">
+                        <tr>
+                            <th class="pb-2">{% trans "Когда" %}</th>
+                            <th class="pb-2">{% trans "Кто" %}</th>
+                            <th class="pb-2">{% trans "Откуда (IP)" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for entry in dashboard_stats.recent_logins %}
+                            <tr class="hover:bg-slate-50">
+                                <td class="py-2 whitespace-nowrap text-slate-600">{{ entry.created_at|date:"d.m.Y H:i" }}</td>
+                                <td class="py-2 font-medium">
+                                    {% if entry.user %}{{ entry.user.full_name }}{% elif entry.username %}{{ entry.username }}{% else %}—{% endif %}
+                                </td>
+                                <td class="py-2 font-mono text-xs text-slate-500">{{ entry.ip|default:"—" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="mt-3 text-sm text-slate-500">{% trans "Входов пока не было: журнал событий пуст." %}</p>
+        {% endif %}
+    </div>
+</div>

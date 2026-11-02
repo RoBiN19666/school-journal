@@ -1,0 +1,14 @@
+{% load static i18n %}{% comment %}Обрезка логотипа: подписи и локальный скрипт для поля «Логотип».
+
+Рамку, ползунок и предпросмотр рисует journal/logo-crop.js — чистый JavaScript
+с canvas, без внешних библиотек и без интернета. Если скрипт почему-то не
+сработал, скрытые поля с координатами остаются пустыми, и сервер сам обрезает
+картинку по центру (см. journal/branding.py).{% endcomment %}
+<div hidden data-logo-crop-config
+     data-title="{% trans 'Логотип' %}"
+     data-hint="{% trans 'Потяните картинку мышью и задайте масштаб ползунком — в логотип попадёт квадрат в центре рамки.' %}"
+     data-zoom="{% trans 'Масштаб' %}"
+     data-apply="{% trans 'Применить' %}"
+     data-cancel="{% trans 'Отмена' %}"
+     data-close="{% trans 'Закрыть' %}"></div>
+<script src="{% static 'journal/logo-crop.js' %}?v=3" defer></script>

@@ -1,0 +1,159 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} · {% trans "Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{% url 'teachers' %}" class="text-sm text-slate-500 hover:text-slate-700">← {% trans "Преподаватели" %}</a>
+    <h1 class="mt-2 text-2xl font-semibold">{{ title }}</h1>
+    <p class="text-sm text-slate-500">
+        {% if form.instance.pk %}
+            {% blocktrans with username=form.instance.username subjects=subjects_count %}Логин — <span class="font-medium text-slate-700">{{ username }}</span>,
+            программ — {{ subjects }}.
+            Данные и пароль меняются здесь же: старый пароль знать не нужно.{% endblocktrans %}
+        {% else %}
+            {% trans "Преподаватель сможет войти под этим логином и отмечать посещаемость." %}
+        {% endif %}
+    </p>
+</div>
+
+{% if form.instance.pk %}
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "Данные преподавателя" %}</h2>
+            <form method="post" class="mt-4 space-y-5" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+                {% for field in form %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                            {{ field.label }}{% if field.field.required %} <span class="text-rose-500">*</span>{% endif %}
+                        </label>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <p class="mt-1 text-xs text-slate-400">{{ field.help_text }}</p>
+                        {% endif %}
+                        {% for error in field.errors %}
+                            <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                <div class="flex flex-wrap items-center gap-3 pt-2">
+                    <button type="submit"
+                            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                        {% trans "Сохранить данные" %}
+                    </button>
+                    <a href="{% url 'teachers' %}"
+                       class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                        {% trans "Отмена" %}
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold">{% trans "Смена пароля" %}</h2>
+            <p class="mt-1 text-sm text-slate-500">
+                {% trans "Задайте новый пароль и передайте его преподавателю — старый пароль при этом не нужен." %}
+            </p>
+            <form method="post" class="mt-4 space-y-5" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="form" value="password">
+                {% if password_form.non_field_errors %}
+                    <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        {{ password_form.non_field_errors }}
+                    </div>
+                {% endif %}
+                {% for field in password_form %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                            {{ field.label }}{% if field.field.required %} <span class="text-rose-500">*</span>{% endif %}
+                        </label>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <div class="mt-1 text-xs text-slate-400">{{ field.help_text|safe }}</div>
+                        {% endif %}
+                        {% for error in field.errors %}
+                            <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+
+                {% include "journal/includes/password_tools.html" %}
+
+                <button type="submit"
+                        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    {% trans "Сохранить новый пароль" %}
+                </button>
+            </form>
+        </div>
+
+        {% if current_absence %}
+            {% comment %}
+            Одна компактная строка вместо прежнего блока: периоды вносят и правят
+            в отдельном разделе «Отсутствия». Рядом — переход на неделю, в которую
+            попадает начало периода: там отменённые занятия, и с них ставится подмена
+            (адрес недели такой же, как в остальных ссылках: /weeks/?week=ГГГГ-ММ-ДД).
+            {% endcomment %}
+            <div class="xl:col-span-2">
+                <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <span>
+                        {% blocktrans with title=current_absence.title %}Отсутствует: {{ title }}{% endblocktrans %}
+                    </span>
+                    <a href="{% url 'absence_list' %}?teacher={{ teacher.pk }}"
+                       class="font-medium underline">{% trans "Отсутствия" %}</a>
+                    <a href="{% url 'week_journal' %}?week={{ current_absence.date_from|date:'Y-m-d' }}"
+                       class="ml-auto rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                        {% trans "Поставить подмену" %}
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% else %}
+    <div class="max-w-xl rounded-2xl bg-white p-6 shadow-sm">
+        <form method="post" class="space-y-5" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+            {% for field in form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                        {{ field.label }}{% if field.field.required %} <span class="text-rose-500">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <p class="mt-1 text-xs text-slate-400">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            
+
+            {% include "journal/includes/password_tools.html" %}
+
+        <div class="flex items-center gap-3 pt-2">
+                <button type="submit"
+                        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    {% trans "Создать" %}
+                </button>
+                <a href="{% url 'teachers' %}"
+                   class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    {% trans "Отмена" %}
+                </a>
+            </div>
+        </form>
+    </div>
+{% endif %}
+{% endblock %}

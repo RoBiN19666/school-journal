@@ -1,0 +1,145 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Учебные периоды · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold">{% trans "Учебные периоды" %}</h1>
+    <p class="text-sm text-slate-500">
+        {% blocktrans %}Учебный год делится на полугодия. Программы, группы, расписание и посещаемость относятся
+        к конкретному полугодию и конкретному адресу — переключайте их сверху в шапке.
+        В новом полугодии данных нет: программы вместе с составом групп и расписанием переносят
+        кнопкой{% endblocktrans %}
+        <a href="{% url 'period_copy' %}" class="text-indigo-600 underline">{% trans "«Перенести из другого полугодия»" %}</a>.
+    </p>
+</div>
+
+{% comment %}
+Две колонки: слева учебные годы, справа полугодия — прежняя раскладка раздела.
+В левом блоке и список годов, и форма «Добавить учебный год»: список
+прокручивается внутри себя (max-height и overflow-y у [data-year-list], см.
+journal/static/journal/app.css), поэтому блок не растёт вниз, сколько бы лет ни
+накопилось. Постраничного вывода нет: все годы сразу, а прокрутка — внутри
+списка.
+{% endcomment %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-semibold">{% trans "Учебные годы" %}</h2>
+        <input type="search" data-year-filter placeholder="{% trans 'Найти год…' %}"
+               class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">
+        <div class="mt-2 space-y-2 overflow-y-auto pr-1" data-year-list>
+            {% for item in years %}
+                <a href="{% url 'periods' %}?year={{ item.pk }}"
+                   data-year-item data-search-text="{{ item.title }}" class="flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm transition {% if year and item.pk == year.pk %}border-indigo-300 bg-indigo-50/50 text-indigo-800{% else %}border-slate-200 text-slate-700 hover:bg-slate-50{% endif %}">
+                    <span class="font-medium">{{ item.title }}</span>
+                    <span class="text-xs text-slate-400">{{ item.date_range }}</span>
+                </a>
+            {% empty %}
+                <p class="text-sm text-slate-500">{% trans "Учебные годы появятся здесь автоматически." %}</p>
+                <p data-year-empty class="hidden text-sm text-slate-500">{% trans "Ничего не найдено." %}</p>
+            {% endfor %}
+        </div>
+
+        <form method="post" class="mt-5 border-t border-slate-100 pt-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_year">
+            <h3 class="text-sm font-semibold text-slate-700">{% trans "Добавить учебный год" %}</h3>
+            <p class="mt-1 text-xs text-slate-500">
+                {% trans "Выбирается только год — начало 1 сентября и окончание 31 августа подставятся сами." %}
+            </p>
+            <div class="mt-3 space-y-3">
+                {% for field in form %}{% if field.is_hidden %}{{ field }}{% endif %}{% endfor %}
+                {% for field in form %}{% if not field.is_hidden %}
+                    <div>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <p class="mt-1 text-xs text-slate-400">{{ field.help_text }}</p>
+                        {% endif %}
+                        {% for error in field.errors %}
+                            <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}{% endfor %}
+                {% for error in form.non_field_errors %}
+                    <p class="text-xs text-rose-600">{{ error }}</p>
+                {% endfor %}
+                <button type="submit"
+                        class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    {% trans "Добавить год" %}
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="rounded-2xl bg-white p-5 shadow-sm xl:col-span-2">
+        <h2 class="text-lg font-semibold">{% trans "Полугодия" %}{% if year %} · {{ year.title }}{% endif %}</h2>
+        <p class="mt-1 text-xs text-slate-500">
+            {% trans "Даты и номера полугодий можно поправить — например, сдвинуть начало или окончание." %}
+        </p>
+
+        <form method="post" class="mt-3">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_terms">
+            <div>
+                <div class="periods-table-wrap overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="text-xs uppercase tracking-wide text-slate-400">
+                        <tr>
+                            <th class="px-2 py-2">№</th>
+                            <th class="px-2 py-2">{% trans "Начало" %}</th>
+                            <th class="px-2 py-2">{% trans "Окончание" %}</th>
+                            <th class="px-2 py-2 text-center">{% trans "Программы" %}</th>
+                            <th class="px-2 py-2 text-center">{% trans "Группы" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for row in terms %}
+                            <tr>
+                                <td class="px-2 py-2 align-top text-center">
+                                    <input type="hidden" name="term_id" value="{{ row.term.pk }}">
+                                    <span class="font-medium text-slate-700">{{ row.term.number }}</span>
+                                </td>
+                                <td class="px-2 py-2 align-top">
+                                    <input type="date" name="start_{{ row.term.pk }}"
+                                           value="{{ row.term.start_date|date:'Y-m-d' }}"
+                                           class="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 ">
+                                </td>
+                                <td class="px-2 py-2 align-top">
+                                    <input type="date" name="end_{{ row.term.pk }}"
+                                           value="{{ row.term.end_date|date:'Y-m-d' }}"
+                                           class="h-10 rounded-lg border border-slate-300 px-2 py-1 text-sm">
+                                </td>
+                                <td class="px-2 py-2 align-top text-center">
+                                    {% if row.subjects %}
+                                        <span class="text-slate-600">{{ row.subjects }}</span>
+                                    {% else %}
+                                        <a href="{% url 'period_switch' %}?term={{ row.term.pk }}&amp;next={{ copy_url|urlencode }}"
+                                           class="inline-flex h-10 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-medium text-amber-800 shadow-sm transition hover:bg-amber-100">
+                                            {% trans "пусто — перенести" %}
+                                        </a>
+                                    {% endif %}
+                                </td>
+                                <td class="px-2 py-2 align-top text-center text-slate-600">{{ row.groups }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="px-3 py-3 text-sm text-slate-500">
+                                    {% trans "Полугодий пока нет — добавьте учебный год слева." %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+            {% if terms %}
+                <button type="submit"
+                        class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    {% trans "Сохранить даты полугодий" %}
+                </button>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}

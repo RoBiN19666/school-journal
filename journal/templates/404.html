@@ -1,0 +1,10 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Страница не найдена · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+    {% trans "Такой страницы нет" as card_title %}
+    {% trans "Возможно, адрес введён с опечаткой, ссылка устарела или страница переехала. Проверьте адрес или вернитесь назад — журнал продолжает работать." as card_message %}
+    {% include "journal/includes/error_card.html" with code="404" title=card_title message=message|default:card_message %}
+{% endblock %}

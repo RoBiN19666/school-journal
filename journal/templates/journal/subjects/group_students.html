@@ -1,0 +1,135 @@
+{% extends "journal/base.html" %}
+{% load static i18n %}
+
+{% block title %}{{ title }} · {% trans "Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{% url 'subject_detail' group.subject.pk %}" class="text-sm text-slate-500 hover:text-slate-700">
+        ← {{ group.subject.name }}
+    </a>
+    <h1 class="mt-2 text-2xl font-semibold">{{ title }}</h1>
+    <p class="text-sm text-slate-500">
+        {% blocktrans with in_group=group_count total=total_count %}Отметьте галочками учеников, которые занимаются в группе, и сохраните.
+        Сейчас в группе: {{ in_group }} из {{ total }} учеников базы.{% endblocktrans %}
+    </p>
+</div>
+
+<form method="post" class="max-w-4xl">
+    {% csrf_token %}
+    <input type="hidden" name="back" value="{{ request.GET.urlencode }}">
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-slate-100 pb-3">
+            <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input type="checkbox" id="select-all"
+                       class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                {% trans "Отметить всех на странице" %}
+            </label>
+            <div class="flex flex-wrap items-center gap-2">
+                <input type="search" name="q" value="{{ query }}" form="group-search"
+                       data-group-search
+                       placeholder="{% trans 'Поиск по всей базе: фамилия, имя, отчество' %}"
+                       class="w-72 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                <select name="per_page" form="group-search" data-autosubmit
+                        class="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm shadow-sm outline-none transition focus:border-indigo-500">
+                    {% for value in per_page_choices %}
+                        <option value="{{ value }}" {% if value == per_page %}selected{% endif %}>
+                            {% blocktrans %}по {{ value }}{% endblocktrans %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <p class="mb-3 text-xs text-slate-400">
+            {% trans "Поиск идёт по всей базе учеников, а не только по этой странице." %}
+            {% if query %}{% blocktrans with found=found_count %}Найдено: {{ found }}.{% endblocktrans %} <a class="text-indigo-600 hover:text-indigo-700" href="{% url 'group_students' group.pk %}">{% trans "Сбросить поиск" %}</a>.{% endif %}
+        </p>
+
+        {% if rows %}
+            <div id="students-list" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {% for row in rows %}
+                    <label class="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 text-sm transition hover:bg-slate-50">
+                        <input type="checkbox" name="students" value="{{ row.student.pk }}"
+                               {% if row.checked %}checked{% endif %}
+                               class="student-checkbox h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <span>
+                            {{ row.student.full_name }}
+                            <span class="text-xs text-slate-400">
+                                {{ row.student.birth_date|date:"d.m.Y" }}{% if row.checked %} · {% trans "в группе" %}{% endif %}
+                            </span>
+                        </span>
+                    </label>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-sm text-slate-500">
+                {% if query %}
+                    {% blocktrans with search=query %}По запросу «{{ search }}» никого не найдено.{% endblocktrans %}
+                {% else %}
+                    {% trans "В базе ещё нет учеников. Добавьте их в разделе" %}
+                    <a href="{% url 'student_add' %}" class="text-indigo-600 hover:text-indigo-700">«{% trans "Ученики" %}»</a>,
+                    {% trans "затем вернитесь сюда." %}
+                {% endif %}
+            </p>
+        {% endif %}
+
+        {% if keep_students %}
+            <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                {% blocktrans with hidden=hidden_count %}Ещё {{ hidden }} учеников из группы не показаны на этой странице —
+                они сохранятся, даже если вы их не видите. Чтобы убрать, найдите их поиском
+                и снимите галочку.{% endblocktrans %}
+                {% for student in keep_students %}
+                    <input type="hidden" name="students" value="{{ student.pk }}">
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if page.paginator.num_pages > 1 %}
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm">
+                <span class="text-xs text-slate-400">
+                    {% blocktrans with number=page.number pages=page.paginator.num_pages total=found_count %}Страница {{ number }} из {{ pages }} ·
+                    всего {{ total }} записей{% endblocktrans %}
+                </span>
+                <div class="flex flex-wrap items-center gap-1">
+                    {% if page.has_previous %}
+                        <a href="?page={{ page.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}&per_page={{ per_page }}"
+                           class="rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 transition hover:bg-slate-50">‹ {% trans "Назад" %}</a>
+                    {% endif %}
+                    {% for number in page.paginator.page_range %}
+                        {% if number == page.number %}
+                            <span class="rounded-lg bg-indigo-600 px-3 py-1.5 font-medium text-white">{{ number }}</span>
+                        {% elif number > page.number|add:"-4" and number < page.number|add:"4" %}
+                            <a href="?page={{ number }}{% if query %}&q={{ query|urlencode }}{% endif %}&per_page={{ per_page }}"
+                               class="rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 transition hover:bg-slate-50">{{ number }}</a>
+                        {% endif %}
+                    {% endfor %}
+                    {% if page.has_next %}
+                        <a href="?page={{ page.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}&per_page={{ per_page }}"
+                           class="rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 transition hover:bg-slate-50">{% trans "Вперёд" %} ›</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="mt-4 flex items-center gap-3">
+        <button type="submit"
+                class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+            {% trans "Сохранить состав" %}
+        </button>
+        <a href="{% url 'subject_detail' group.subject.pk %}"
+           class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            {% trans "Отмена" %}
+        </a>
+        <a href="{% url 'student_add' %}"
+           class="ml-auto text-sm text-indigo-600 hover:text-indigo-700">
+            {% trans "Добавить нового ученика" %} →
+        </a>
+    </div>
+</form>
+
+<form id="group-search" method="get" class="hidden"></form>
+
+<script src="{% static 'journal/subjects-group-students.js' %}?v=24" defer></script>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% load i18n %}
+{% comment %}
+    Панель «Преподаватели программы»: поиск сверху и список преподавателей галочками.
+    Настоящий <select multiple> остаётся в форме (ниже) и уходит на сервер как раньше,
+    а галочки показывают и меняют его выбранные значения — см. journal/subjects-form.js.
+{% endcomment %}
+<div class="space-y-2" data-teacher-checks>
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="border-b border-slate-100 p-2">
+            <input type="search" data-teacher-search autocomplete="off"
+                   placeholder="{% trans "Начните вводить фамилию" %}"
+                   class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+        </div>
+        <div class="max-h-64 overflow-y-auto p-1" data-teacher-list>
+            {% for group_name, group_choices, group_index in widget.optgroups %}
+                {% for option in group_choices %}
+                    <label data-teacher-item
+                           data-teacher-text="{{ option.label|lower }}"
+                           class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50{% if option.selected %} bg-indigo-50 font-medium text-indigo-700{% endif %}">
+                        <input type="checkbox" data-teacher-check
+                               value="{{ option.value|stringformat:'s' }}"
+                               class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"{% if option.selected %} checked{% endif %}>
+                        <span class="min-w-0 truncate">{{ option.label }}</span>
+                        <span class="ml-auto hidden shrink-0 text-xs font-normal text-indigo-500" data-teacher-main>{% trans "основной" %}</span>
+                    </label>
+                {% endfor %}
+            {% endfor %}
+            <p class="hidden px-2 py-1.5 text-sm text-slate-500" data-teacher-empty>{% trans "Ничего не найдено" %}</p>
+        </div>
+    </div>
+    <p class="text-xs text-slate-400" data-teacher-count>{% blocktrans with selected=widget.selected_count total=widget.total_count %}Отмечено: {{ selected }} из {{ total }}{% endblocktrans %}</p>
+    <select name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}>{% for group_name, group_choices, group_index in widget.optgroups %}{% if group_name %}<optgroup label="{{ group_name }}">{% endif %}{% for option in group_choices %}{% include option.template_name with widget=option %}{% endfor %}{% if group_name %}</optgroup>{% endif %}{% endfor %}</select>
+</div>

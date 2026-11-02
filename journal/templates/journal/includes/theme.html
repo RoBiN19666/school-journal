@@ -1,0 +1,23 @@
+{% load static %}
+{% load i18n %}
+{% comment %}
+Оформление разделено на две части:
+  * static/journal/app.css — статические стили (подключается файлом);
+  * ниже — токены тем, они генерируются из journal/themes.py.
+{% endcomment %}
+<link rel="stylesheet" href="{% static 'journal/app.css' %}?v=30">
+<style>
+    /* Основная (светлая) тема — значения по умолчанию. */
+    :root {
+        {% for name, value in theme_light.items %}--{{ name }}: {{ value }};
+        {% endfor %}
+        color-scheme: light;
+    }
+    {% for item in themes %}
+    html[data-theme="{{ item.value }}"] {
+        {% for name, value in item.vars.items %}--{{ name }}: {{ value }};
+        {% endfor %}
+        color-scheme: var(--scheme);
+    }
+    {% endfor %}
+</style>

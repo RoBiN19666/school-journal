@@ -1,0 +1,110 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Мои данные · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold">{% trans "Мои данные" %}</h1>
+    <p class="text-sm text-slate-500">
+        {% blocktrans with username=user.username get_role_display=user.get_role_display %}Здесь можно поправить своё ФИО и сменить свой пароль.
+        Логин — <span class="font-medium text-slate-700">{{ username }}</span>,
+        роль — {{ get_role_display }}.{% endblocktrans %}
+    </p>
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+    <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold">{% trans "Фамилия и имя" %}</h2>
+        <p class="mt-1 text-sm text-slate-500">{% trans "Так вас видят в журнале: в расписании, в списках, в отметках." %}</p>
+
+        <form method="post" class="mt-4 space-y-5" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="profile">
+            {% if profile_form.non_field_errors %}
+                <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {{ profile_form.non_field_errors }}
+                </div>
+            {% endif %}
+            {% for field in profile_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                        {{ field.label }}{% if field.field.required %} <span class="text-rose-500">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% for error in field.errors %}
+                        <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <button type="submit"
+                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                {% trans "Сохранить данные" %}
+            </button>
+        </form>
+    </div>
+
+    <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold">{% trans "Смена пароля" %}</h2>
+        <p class="mt-1 text-sm text-slate-500">
+            {% trans "Нужно знать текущий пароль. Если пароль забыт — попросите методиста или администратора сбросить его." %}
+        </p>
+
+        <form method="post" class="mt-4 space-y-5" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="password">
+            {% if password_form.non_field_errors %}
+                <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {{ password_form.non_field_errors }}
+                </div>
+            {% endif %}
+            {% for field in password_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">
+                        {{ field.label }}{% if field.field.required %} <span class="text-rose-500">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="mt-1 text-xs text-slate-400">{{ field.help_text|safe }}</div>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <p class="mt-1 text-xs text-rose-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            {% include "journal/includes/password_tools.html" %}
+
+            <button type="submit"
+                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                {% trans "Сменить пароль" %}
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="theme" class="mt-6 rounded-2xl bg-white p-6 shadow-sm">
+    <h2 class="text-lg font-semibold">{% trans "Оформление" %}</h2>
+    <p class="mt-1 text-sm text-slate-500">
+        {% trans "Тема применяется и запоминается для этого браузера." %}
+    </p>
+    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {% for item in themes %}
+            <button type="button" data-plain-button data-theme-option="{{ item.value }}"
+                    class="rounded-2xl border-2 border-slate-200 bg-white p-3 text-left transition hover:border-indigo-300 hover:shadow-sm
+                           {% if item.value == theme %}ring-2 ring-indigo-500{% endif %}">
+                <span class="flex items-center justify-between gap-2">
+                    <span class="text-sm font-medium text-slate-800">{{ item.label }}</span>
+                    <span data-theme-check class="text-sm text-indigo-600">{% if item.value == theme %}✓{% endif %}</span>
+                </span>
+                <span class="mt-1 block text-xs text-slate-500">{{ item.hint }}</span>
+                <span class="mt-2 flex gap-1">
+                    {% for color in item.preview %}
+                        <span class="h-5 flex-1 rounded" style="background: {{ color }}"></span>
+                    {% endfor %}
+                </span>
+            </button>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

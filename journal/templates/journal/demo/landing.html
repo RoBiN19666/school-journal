@@ -1,0 +1,71 @@
+{% extends "journal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Демо-режим · Электронный журнал" %}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold">{% trans "Демо-режим" %}</h1>
+    <p class="text-sm text-slate-500">
+        {% blocktrans %}Вход без пароля. Журнал сразу заполнен учениками, программами, группами, расписанием
+        и отметками посещаемости за последние 4 недели — можно спокойно всё посмотреть и поменять.{% endblocktrans %}
+    </p>
+</div>
+
+<div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-900">
+	<p class="font-medium">{% trans "Это демонстрация" %}</p>
+	<p class="mt-1">
+		{% blocktrans %}Здесь всё понарошку: данные тестовые, изменения нигде не сохраняются.
+		Рабочий журнал <span class="font-medium">не затрагивается</span>.
+		Выйти можно кнопкой «Выйти из демонстрации».{% endblocktrans %}
+	</p>
+</div>
+
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <div class="grid h-10 w-10 place-items-center rounded-xl bg-indigo-600 text-sm font-semibold text-white">УМО</div>
+        <h2 class="mt-4 text-lg font-semibold">{% trans "Войти как методист" %}</h2>
+        <p class="mt-1 text-sm text-slate-500">
+            {% blocktrans %}Сотрудник учебно-методического отдела: ученики, программы, группы, расписание,
+            преподаватели, выгрузка в Excel.{% endblocktrans %}
+        </p>
+        <a href="{% url 'demo_login' 'methodist' %}"
+           class="mt-5 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+            {% trans "Войти как методист" %}
+        </a>
+    </div>
+
+    <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <div class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-600 text-sm font-semibold text-white">ПРЕП</div>
+        <h2 class="mt-4 text-lg font-semibold">{% trans "Войти как преподаватель" %}</h2>
+        <p class="mt-1 text-sm text-slate-500">
+            {% blocktrans %}Преподаватель: своё расписание на неделю, отметка посещаемости по ученикам,
+            выгрузка своей посещаемости в Excel.{% endblocktrans %}
+        </p>
+        <a href="{% url 'demo_login' 'teacher' %}"
+           class="mt-5 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+            {% trans "Войти как преподаватель" %}
+        </a>
+    </div>
+</div>
+
+<!--<div class="mt-6 rounded-2xl border border-slate-200 bg-white/60 p-4 text-sm text-slate-500">
+    <p class="font-medium text-slate-700">Что нужно знать</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5">
+        <li>Демо-учётки называются <code>demo_methodist</code>, <code>demo_teacher</code> и <code>demo_teacher_2</code>; пароля у них нет.</li>
+        <li>Демо-данные лежат в отдельной базе <code>{{ demo_database }}</code>, поэтому в рабочем журнале
+            их не видно и они не мешают настоящим ученикам и расписанию.</li>
+        <li>Демо-режим включается переменной окружения <code>DEMO_MODE=1</code>. Для реальной работы поставьте <code>DEMO_MODE=0</code>.</li>
+        <li>Очистить демонстрационную базу можно на странице
+            <a class="text-indigo-600 hover:text-indigo-700" href="{% url 'demo_manage' %}">«Демо-режим»</a>
+            (для администратора) или командой <code>python manage.py clear_demo</code>.</li>
+        <li>
+            {% if demo_ready %}
+                Демонстрационные данные уже загружены.
+            {% else %}
+                При входе демонстрационные данные создадутся автоматически.
+            {% endif %}
+        </li>
+    </ul>
+</div> -->
+{% endblock %}
