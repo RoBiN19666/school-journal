@@ -25,7 +25,6 @@
 
 |  |  |
 |:---:|:---:|
-
 | <img src="docs/screenshots/schedule.png" width="400" alt="Расписание"><br><sub><b>Расписание</b> · сетка по дням</sub> | <img src="docs/screenshots/weeks.png" width="400" alt="Посещаемость"><br><sub><b>Посещаемость</b> · недельная таблица отметок</sub> |
 
 ## Возможности
