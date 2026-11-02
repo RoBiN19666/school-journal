@@ -1,5 +1,11 @@
 ﻿<p align="center"><b>English</b> &nbsp;·&nbsp; <a href="README.ru.md">Русский</a></p>
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png">
+    <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
+  </picture>
+</p>
 # Electronic attendance journal
 
 A web attendance journal for an educational organisation: students, programmes, groups
@@ -97,6 +103,12 @@ bash install.sh --no-prompt        # no questions: instructions only
 
 ```bash
 cp .env.example .env
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png">
+    <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
+  </picture>
+</p>
 # open .env and fill in SECRET_KEY and POSTGRES_PASSWORD
 docker compose up -d --build
 docker compose exec -T web python manage.py healthcheck   # wait until it reports 0 errors
@@ -172,12 +184,30 @@ installation again.
 ### Other distributions manually
 
 ```bash
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png">
+    <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
+  </picture>
+</p>
 # Debian/Ubuntu
 sudo apt-get install -y docker.io docker-compose-plugin
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png">
+    <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
+  </picture>
+</p>
 # Fedora/RHEL
 sudo dnf install -y docker docker-compose-plugin
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png">
+    <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
+  </picture>
+</p>
 # Arch
 sudo pacman -S docker docker-compose
 ```
