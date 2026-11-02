@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.staticfiles import finders
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
@@ -47,6 +48,7 @@ from django.views.generic import (
     View,
 )
 
+from . import __version__
 from . import backup as backup_tools
 from . import crypto
 from . import demo as demo_tools
@@ -58,6 +60,7 @@ from . import notifications
 from . import periods as periods_tools
 from . import security as security_tools
 from . import setup as setup_tools
+from . import updates as update_tools
 from .absences import (
     absence_caption,
     absence_on,
@@ -175,10 +178,17 @@ class StaffRequiredMixin(RoleRequiredMixin):
 
 
 class AdminRequiredMixin(RoleRequiredMixin):
-    """Только главный администратор."""
+    """Администратор: главный администратор или обычный администратор."""
 
     def test_func(self):
         return self.request.user.is_authenticated and self.request.user.is_admin
+
+
+class SuperadminRequiredMixin(RoleRequiredMixin):
+    """Только главный администратор: резервные копии и восстановление."""
+
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.is_superadmin
 
 
 class TeacherRequiredMixin(RoleRequiredMixin):
@@ -416,6 +426,18 @@ class AboutView(TemplateView):
                 "organization_form",
                 OrganizationNameForm(instance=SiteSettings.load()),
             )
+            # Обновления проверяет только главный администратор: он решает,
+            # когда обновлять сервер, и только ему показывается этот блок.
+            # Для остальных ролей GitHub не запрашивается вовсе.
+            release = update_tools.latest_release()
+            context["update_available"] = (
+                release
+                if release is not None
+                and update_tools.is_newer(__version__, release["tag"])
+                else None
+            )
+            context["update_check_failed"] = release is None
+            context["update_releases_url"] = update_tools.RELEASES_PAGE_URL
         return context
 
 
@@ -4963,7 +4985,7 @@ def restore_comparison(counts):
     )
 
 
-class BackupIndexView(AdminRequiredMixin, TemplateView):
+class BackupIndexView(SuperadminRequiredMixin, TemplateView):
     template_name = "journal/backup/index.html"
 
     def get_context_data(self, **kwargs):
@@ -4986,7 +5008,7 @@ class BackupIndexView(AdminRequiredMixin, TemplateView):
         return context
 
 
-class BackupDownloadView(AdminRequiredMixin, View):
+class BackupDownloadView(SuperadminRequiredMixin, View):
     """Скачивание копии. Можно зашифровать её парольной фразой."""
 
     def get(self, request):
@@ -5040,7 +5062,7 @@ class BackupDownloadView(AdminRequiredMixin, View):
         return response
 
 
-class BackupRestoreView(AdminRequiredMixin, View):
+class BackupRestoreView(SuperadminRequiredMixin, View):
     template_name = "journal/backup/index.html"
 
     def post(self, request):
@@ -5282,6 +5304,15 @@ class CustomizationView(AdminRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = _("Кастомизация журнала")
+        # Предпросмотр показывает стандартный знак и фавикон, только если файлы
+        # действительно есть в статике. На собранной статике файл мог не
+        # собраться: тогда честнее показать текстовую заглушку, чем битую картинку.
+        context["default_logo_available"] = bool(
+            finders.find("journal/logo-square.png")
+        )
+        context["default_favicon_available"] = bool(
+            finders.find("journal/favicon.png")
+        )
         return context
 
     def form_valid(self, form):

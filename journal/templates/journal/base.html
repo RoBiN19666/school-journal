@@ -332,11 +332,11 @@
                 <p class="px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-400">
                     {% trans "Администрирование" %}
                 </p>
+            {% if user.is_superadmin %}
                 <a href="{% url 'backup' %}"
                    class="block rounded-xl px-3 py-2 text-sm font-medium transition {% if 'backup' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
                     {% trans "Резервная копия" %}
                 </a>
-            {% if user.is_superadmin %}
                 <a href="{% url 'customization' %}"
                class="block rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
                 {% trans "Кастомизация" %}

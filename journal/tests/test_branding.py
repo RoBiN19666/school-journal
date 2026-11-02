@@ -183,7 +183,11 @@ class LogoDisplayTests(LogoTestCase):
         page = self.client.get(reverse("dashboard"))
         self.assertEqual(page.status_code, 200)
         header = self.header_html(page)
-        self.assertIn("ЭЖ", header, "без логотипа должен быть стандартный бейдж")
+        self.assertIn(
+            "/static/journal/logo-square.png",
+            header,
+            "без своего логотипа показывается знак проекта",
+        )
         self.assertNotIn("/media/branding/", header)
 
         content = split_png(400, 400, split=200)
@@ -195,10 +199,10 @@ class LogoDisplayTests(LogoTestCase):
         page = self.client.get(reverse("dashboard"))
         header = self.header_html(page)
         self.assertIn('<img src="/media/branding/', header)
-        self.assertIn("object-cover", header)
+        self.assertIn("object-contain", header)
         self.assertIn("rounded-xl", header)
         self.assertIn("h-8 w-8", header)
-        self.assertNotIn("object-contain", header, "внутри бейджа картинку не подкладываем")
+        self.assertIn("p-0.5", header, "у картинки белая подложка")
         self.assertNotIn("ЭЖ", header, "короткий знак не должен показываться поверх")
 
         self.client.logout()
@@ -207,7 +211,7 @@ class LogoDisplayTests(LogoTestCase):
         html = login.content.decode()
         self.assertIn('<img src="/media/branding/', html)
         self.assertIn("rounded-2xl", html)
-        self.assertIn("object-cover", html)
+        self.assertIn("object-contain", html)
 
 
 class LogoFitCropTests(LogoTestCase):

@@ -85,6 +85,49 @@
         <p class="text-sm text-slate-500">{{ app_fund }} · {{ app_product }}</p>
     </div>
 
+    {% if user.is_superadmin %}
+        {# Проверка обновлений: блок видят только главные администраторы. #}
+        <div class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-update-check>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">{% trans "Обновления" %}</p>
+                <p class="text-sm font-medium text-slate-700" data-current-version>
+                    {% blocktrans with version=app_version %}Ваша версия: {{ version }}{% endblocktrans %}
+                </p>
+            </div>
+
+            {% if update_available %}
+                <div class="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4" data-update-available>
+                    <p class="text-base font-semibold text-indigo-900">
+                        {% blocktrans with version=update_available.tag %}Доступна версия {{ version }}{% endblocktrans %}
+                    </p>
+                    <p class="mt-1 text-sm text-indigo-900/80">
+                        {% trans "Вышло обновление журнала: исправления и новые возможности." %}
+                        <a href="{{ update_available.url }}" target="_blank" rel="noopener"
+                           class="font-medium text-indigo-700 underline-offset-2 hover:underline">{% trans "Что нового на GitHub" %}</a>
+                    </p>
+                    <p class="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                        <span>{% trans "Обновление одной командой в папке проекта:" %}</span>
+                        <code class="rounded-lg bg-white px-2.5 py-1 font-mono text-[13px] text-indigo-700 shadow-sm">./update.sh</code>
+                    </p>
+                    <p class="mt-2 text-xs text-indigo-900/70">
+                        {% trans "Перед обновлением скрипт сохраняет резервную копию. Подробности — в руководстве администратора." %}
+                    </p>
+                </div>
+            {% elif update_check_failed %}
+                <p class="mt-3 text-sm text-slate-600" data-update-failed>
+                    {% trans "Не удалось проверить обновления." %}
+                    <a href="{{ update_releases_url }}" target="_blank" rel="noopener"
+                       class="font-medium text-indigo-600 hover:text-indigo-700">{% trans "Список версий на GitHub" %}</a>
+                </p>
+            {% else %}
+                <p class="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800" data-update-current>
+                    <span aria-hidden="true">✓</span>
+                    {% trans "У вас последняя версия" %}
+                </p>
+            {% endif %}
+        </div>
+    {% endif %}
+
     <div class="rounded-2xl bg-white p-6 shadow-sm">
         <dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
             <div>

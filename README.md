@@ -264,7 +264,7 @@ More details are in [docs/admin-guide.md](docs/admin-guide.md), section 12.
 | **Export to Excel** | tables and the schedule as a PNG image |
 | **Teaching and methodology support staff** | methodists and administrators (administrator only) |
 | **Security** | email and notifications, access by IP, the sign-in log |
-| **Backup** | download and restore the data |
+| **Backup** | download and restore the data (chief administrator only) |
 | **Demo mode and demo data** | the state of the demo database and clearing it |
 | **Customisation** | themes and appearance (chief administrator only) |
 | **Django admin** | the standard admin, the address is set by `ADMIN_URL` |
@@ -275,7 +275,7 @@ sections are not available to them. The full description of the permissions is i
 
 ## Backups
 
-The **“Backup”** section (`/backup/`, administrators only):
+The **“Backup”** section (`/backup/`, chief administrator only):
 
 * **Download a copy** — a single JSON file with all the journal data. With a passphrase
   the file is downloaded encrypted (`.json.enc`).
@@ -286,7 +286,13 @@ What matters:
 
 * the copy contains **password hashes** and personal data — do not send the file by email
   and do not put it into shared folders; the journal does not store the passphrase;
-* the logo and the favicon are not part of the copy: they live in the `media_data` volume;
+* the copy includes the **site settings** (organisation and journal names, the sign-in
+  hint, the session terms) and the **mail settings** (SMTP server, port, sender,
+  recipients and notification switches);
+* the copy does **not** include the logo and the favicon: they live in the `media_data`
+  volume;
+* the copy does **not** include the **SMTP password** in any form: restoring a copy keeps
+  the password already set in the journal;
 * the journal database lives in the `postgres_data` volume and is kept through updates and
   shutdowns.
 
@@ -309,6 +315,27 @@ docker compose exec web python manage.py healthcheck
 
 At the end there must be 11 checks and 0 errors. After updating press **Ctrl+F5** in the
 browser so that it downloads the styles and scripts again.
+
+Since version **2.42.0** the update can be done with one command:
+
+```bash
+./update.sh               # backup, download, rebuild, self-check
+./update.sh --no-backup   # skip the backup
+```
+
+The script checks Docker, `docker compose` and git, makes a backup, downloads the latest
+`main` from GitHub, rebuilds the containers and runs `healthcheck`. It prints the version
+before and after the update; the details are in
+[docs/admin-guide.md](docs/admin-guide.md), section 4.
+
+The backup step uses the management command; the same command can be run by hand:
+
+```bash
+docker compose exec web python manage.py backup --output /tmp/journal-backup.json
+```
+
+`--password` encrypts the file, `--quiet` prints nothing on success. The file is written
+inside the container; use `docker compose cp web:/tmp/journal-backup.json .` to copy it out.
 
 > `docker compose down` stops the journal, the data is kept.
 > `docker compose down -v` **deletes the database volume** — use it only if you really want

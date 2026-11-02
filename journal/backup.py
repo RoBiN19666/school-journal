@@ -1,4 +1,9 @@
-"""Резервная копия данных журнала и восстановление из неё (JSON)."""
+"""Резервная копия данных журнала и восстановление из неё (JSON).
+
+Копия содержит данные журнала и настройки сайта и почты. Логотип, фавикон и
+пароль SMTP в неё не входят. Копии прежнего формата без раздела ``settings``
+восстанавливаются как раньше — этот раздел необязателен.
+"""
 import json
 from datetime import date, datetime, time, timedelta
 
@@ -13,8 +18,10 @@ from .models import (
     ContestResult,
     Group,
     LessonTopic,
+    MailSettings,
     Room,
     Schedule,
+    SiteSettings,
     Student,
     Subject,
     TeacherDevelopment,
@@ -61,6 +68,34 @@ VALID_DISMISSAL = {value for value, _ in Student.Dismissal.choices}
 VALID_CONTEST_STATUSES = {value for value, _ in ContestResult.Status.choices}
 VALID_DEVELOPMENT_KINDS = {value for value, _ in TeacherDevelopment.Kind.choices}
 
+#: Настройки сайта, которые входят в копию. Логотип и фавикон — файлы в
+#: ``media_data``: они в копию не попадают (как и описано в README).
+SITE_SETTINGS_FIELDS = (
+    "organization_name",
+    "product_name",
+    "short_logo",
+    "login_hint",
+    "remember_days",
+    "session_hours",
+)
+
+#: Настройки почты в копии. Пароль SMTP (``password_encrypted``) не входит
+#: в копию ни в каком виде.
+MAIL_SETTINGS_FIELDS = (
+    "host",
+    "port",
+    "username",
+    "use_tls",
+    "use_ssl",
+    "from_email",
+    "recipients",
+    "notify_logins",
+    "notify_failed_logins",
+    "notify_ip_blocked",
+    "notify_backup",
+    "notify_accounts",
+)
+
 # Как восстановить время занятия из старой копии, где был только номер урока.
 LEGACY_DAY_START = time(9, 0)
 LEGACY_LESSON_LENGTH = timedelta(minutes=90)
@@ -91,6 +126,9 @@ def build_backup():
     topics = list(LessonTopic.objects.order_by("pk"))
     contests = list(ContestResult.objects.order_by("pk"))
     development = list(TeacherDevelopment.objects.order_by("pk"))
+    # Настройки читаем без get_or_create: сборка копии не должна менять базу.
+    site = SiteSettings.objects.filter(pk=1).first() or SiteSettings()
+    mail = MailSettings.objects.filter(pk=1).first() or MailSettings()
 
     student_index = {item.pk: index for index, item in enumerate(students)}
     subject_index = {item.pk: index for index, item in enumerate(subjects)}
@@ -240,6 +278,12 @@ def build_backup():
             }
             for item in development
         ],
+        # Настройки сайта и почты. Пароль SMTP сюда не попадает ни в каком виде:
+        # в копии только поля, перечисленные в MAIL_SETTINGS_FIELDS.
+        "settings": {
+            "site": {name: getattr(site, name) for name in SITE_SETTINGS_FIELDS},
+            "mail": {name: getattr(mail, name) for name in MAIL_SETTINGS_FIELDS},
+        },
     }
     backup["counts"] = {
         "academic_years": len(backup["academic_years"]),
@@ -407,6 +451,103 @@ def _find_user(username):
     if not username:
         return None
     return User.objects.filter(username=username).first()
+
+
+# --- Настройки при восстановлении -------------------------------------------
+def _copy_text(value, limit=None):
+    """Строка из копии; None — пустая строка, limit — предел длины поля."""
+    if value is None:
+        return ""
+    text = str(value).strip()
+    return text[:limit] if limit else text
+
+
+def _copy_number(value, current, maximum=None):
+    """Неотрицательное число из копии; битое значение — оставляем текущее."""
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return current
+    if number < 0:
+        return current
+    if maximum is not None and number > maximum:
+        return maximum
+    return number
+
+
+def _copy_bool(value, current):
+    """Да/нет из копии; не bool (например, строка) — оставляем текущее."""
+    return value if isinstance(value, bool) else current
+
+
+def _restore_site_settings(payload):
+    """Применяет настройки сайта. Логотип и фавикон копия не содержит."""
+    if not isinstance(payload, dict):
+        return
+    site = SiteSettings.load()
+    changed = False
+    # (предел длины, можно ли записать пустое значение)
+    text_fields = {
+        "organization_name": (200, False),
+        "product_name": (100, False),
+        "short_logo": (4, False),
+        "login_hint": (200, True),
+    }
+    for name, (limit, allow_empty) in text_fields.items():
+        if name not in payload:
+            continue
+        value = _copy_text(payload[name], limit)
+        if value or allow_empty:
+            setattr(site, name, value)
+            changed = True
+    if "remember_days" in payload:
+        site.remember_days = _copy_number(
+            payload["remember_days"], site.remember_days
+        )
+        changed = True
+    if "session_hours" in payload:
+        site.session_hours = _copy_number(
+            payload["session_hours"], site.session_hours
+        )
+        changed = True
+    if changed:
+        site.save()
+
+
+def _restore_mail_settings(payload):
+    """Применяет настройки почты. Пароль SMTP не читается и не затирается."""
+    if not isinstance(payload, dict):
+        return
+    # Без get_or_create: если в копии нет ни одного известного поля, лишняя
+    # запись в базе не появляется.
+    mail = MailSettings.objects.filter(pk=1).first() or MailSettings()
+    changed = False
+    for name, limit in (("host", 200), ("username", 200), ("from_email", 200)):
+        if name in payload:
+            setattr(mail, name, _copy_text(payload[name], limit))
+            changed = True
+    if "recipients" in payload:
+        mail.recipients = _copy_text(payload["recipients"])
+        changed = True
+    if "port" in payload:
+        mail.port = _copy_number(payload["port"], mail.port, maximum=65535)
+        changed = True
+    for name in (
+        "use_tls",
+        "use_ssl",
+        "notify_logins",
+        "notify_failed_logins",
+        "notify_ip_blocked",
+        "notify_backup",
+        "notify_accounts",
+    ):
+        if name in payload:
+            setattr(mail, name, _copy_bool(payload[name], getattr(mail, name)))
+            changed = True
+    if changed:
+        # password_encrypted намеренно не трогаем: пароль SMTP в копию не
+        # попадает, а уже заданный в системе должен остаться как был.
+        mail.save()
 
 
 def restore(backup, mode="merge", actor=None):
@@ -916,6 +1057,13 @@ def restore(backup, mode="merge", actor=None):
                 },
             )
             counts["development"] += 1
+
+        # Настройки сайта и почты. В старых копиях раздела «settings» нет —
+        # такие копии восстанавливаются как раньше, просто без настроек.
+        settings = backup.get("settings")
+        if isinstance(settings, dict):
+            _restore_site_settings(settings.get("site"))
+            _restore_mail_settings(settings.get("mail"))
 
     # Отчёт: сколько записей было в копии и сколько стало в базе.
     counts["report"] = {
