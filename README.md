@@ -23,9 +23,9 @@ grades — attendance only: `P` — present, `A` — absent, `L` — late.
   <sub><b>Dashboard</b> · summary for the term</sub>
 </p>
 
-
 |  |  |
 |:---:|:---:|
+
 | <img src="docs/screenshots/schedule.png" width="400" alt="Schedule"><br><sub><b>Schedule</b> · the week grid</sub> | <img src="docs/screenshots/weeks.png" width="400" alt="Attendance"><br><sub><b>Attendance</b> · the weekly marks table</sub> |
 <sub>The screenshots of the schedule and attendance show the Russian interface — the journal is fully bilingual.</sub>## Features
 
@@ -147,12 +147,19 @@ Install Docker now? [y/N]
 **Which systems the installer sets up automatically** (according to `/etc/os-release`):
 
 | System | Automatic installation |
+
 | --- | --- |
+
 | Ubuntu 22.04 LTS, 24.04 LTS | yes |
+
 | Ubuntu derivatives: Linux Mint, Pop!_OS and similar (`ID_LIKE=ubuntu`) | yes, if the base is 22.04 or 24.04 |
+
 | Debian 11, 12 | yes |
+
 | Fedora, RHEL, AlmaLinux, Rocky Linux 9 and newer | yes |
+
 | Arch Linux, openSUSE, Alpine and others | no: the script does not install Docker, it shows the command for your package manager and a link to the official instructions, exit code 1 |
+
 | An unknown distribution or an empty version | no, for the same reason |
 
 Checking the version is mandatory: installing Docker “at random” on an unfamiliar system
@@ -245,24 +252,43 @@ More details are in [docs/admin-guide.md](docs/admin-guide.md), section 12.
 ## Main sections of the journal
 
 | Section | What is there |
+
 | --- | --- |
+
 | **Dashboard** | counters (students, programmes, groups, teachers), the nearest classes, quick links |
+
 | **Students** | a list with a search by full name, student cards, import from Excel |
+
 | **Programmes and groups** | the programmes of the active term and the branches, groups, group membership |
+
 | **Schedule** | classes by branch: a grid and a list, rooms, substitutions, one-off classes |
+
 | **Attendance** | the weekly journal: dates, topics, academic hours, `P`/`A`/`L` marks |
+
 | **Class topics** | what the teachers filled in, filters and an export |
+
 | **Academic periods** | years and terms, dates, counters, moving from another term |
+
 | **Teachers** | accounts, changing the password, absences |
+
 | **Absences and substitutions** | absence periods and replacements for all classes of a period |
+
 | **Competitions** | students taking part in competitions and olympiads |
+
 | **Professional development** | courses of the teachers |
+
 | **Export to Excel** | tables and the schedule as a PNG image |
+
 | **Teaching and methodology support staff** | methodists and administrators (administrator only) |
+
 | **Security** | email and notifications, access by IP, the sign-in log |
+
 | **Backup** | download and restore the data |
+
 | **Demo mode and demo data** | the state of the demo database and clearing it |
+
 | **Customisation** | themes and appearance (chief administrator only) |
+
 | **Django admin** | the standard admin, the address is set by `ADMIN_URL` |
 
 A teacher sees only their own classes, their own weeks and a personal export; the other
@@ -316,16 +342,27 @@ All settings are in the `.env` file in the project root. The full list with expl
 in [.env.example](.env.example). The most important ones:
 
 | Variable | Default | Why |
+
 | --- | --- | --- |
+
 | `SECRET_KEY` | — (required) | the signing key for sessions and CSRF, at least 50 characters |
+
 | `POSTGRES_PASSWORD` | — (required) | the database password |
+
 | `DEBUG` | `0` | `1` — detailed errors, for local debugging only |
+
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1` | the domains the journal is opened by |
+
 | `DEMO_MODE` | `0` | `1` — demo mode |
+
 | `DJANGO_LANGUAGE_CODE` | `ru` | the default interface language (`ru` or `en`) |
+
 | `TIME_ZONE` | `Europe/Moscow` | the time zone of the journal |
+
 | `WEB_PORT` | `8000` | the port on the machine the journal is opened by |
+
 | `FUND_NAME` | from `settings.py` | the organisation name on the sign-in page and in the footer |
+
 | `ADMIN_URL` | `admin/` | the address of the Django admin |
 
 For working over HTTPS there are `TRUST_PROXY_HEADERS`, `SECURE_SSL_REDIRECT`,
