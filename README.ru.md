@@ -1,12 +1,5 @@
 ﻿<p align="center"><a href="README.md">English</a> &nbsp;·&nbsp; <b>Русский</b></p>
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
-    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
-  </picture>
-</p>
-
 # Электронный журнал посещаемости
 
 Веб-журнал посещаемости для образовательной организации: ученики, программы, группы
@@ -103,13 +96,6 @@ bash install.sh --no-prompt        # без вопросов: только ин�
 
 ```bash
 cp .env.example .env
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
-    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
-  </picture>
-</p>
-
 # откройте .env и заполните SECRET_KEY и POSTGRES_PASSWORD
 docker compose up -d --build
 docker compose exec -T web python manage.py healthcheck   # ждём «errors: 0»
@@ -187,32 +173,11 @@ Docker Desktop здесь устанавливается **только вруч
 ### Другие дистрибутивы вручную
 
 ```bash
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
-    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
-  </picture>
-</p>
-
 # Debian/Ubuntu
 sudo apt-get install -y docker.io docker-compose-plugin
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
-    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
-  </picture>
-</p>
-
 # Fedora/RHEL
 sudo dnf install -y docker docker-compose-plugin
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
-    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
-  </picture>
-</p>
 
 # Arch
 sudo pacman -S docker docker-compose
