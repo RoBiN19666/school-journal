@@ -18,7 +18,7 @@ Tailwind CSS (the styles are part of the project, no Node.js build needed). Ther
 grades — attendance only: `P` — present, `A` — absent, `L` — late.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard-en.png" width="600" alt="Dashboard">
+  <img src="docs/screenshots/dashboard-en.png?v=2" width="600" alt="Dashboard">
   <br>
   <sub><b>Dashboard</b> · summary for the term</sub>
 </p>
