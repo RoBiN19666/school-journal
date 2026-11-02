@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Electronic attendance journal — one-command installation
+#  Electronic attendance journal - one-command installation
 # =============================================================================
 #  Script for Linux and macOS (for Windows use install.ps1).
 #
@@ -23,7 +23,7 @@
 #      bash install.sh --no-prompt        no questions: instructions only
 #
 #  Re-running is safe: an existing .env is not overwritten, secrets are not
-#  regenerated, data in the volumes is left alone — only the build and the
+#  regenerated, data in the volumes is left alone - only the build and the
 #  start are performed. The same script is used to update to a new version.
 # =============================================================================
 set -euo pipefail
@@ -45,7 +45,7 @@ HEALTH_INTERVAL=${HEALTH_INTERVAL:-4}
 INSTALL_DOCKER=0
 #: No questions at all, instructions only (the --no-prompt flag).
 NO_PROMPT=0
-#: File describing the distribution (Linux). Can be overridden — needed for tests.
+#: File describing the distribution (Linux). Can be overridden - needed for tests.
 OS_RELEASE_FILE=${OS_RELEASE_FILE:-/etc/os-release}
 
 # --- Output formatting --------------------------------------------------------
@@ -67,13 +67,13 @@ ok() { printf '%s  [OK]%s %s\n' "$GREEN" "$RESET" "$*"; }
 note() { printf '%s       %s%s\n' "$DIM" "$*" "$RESET"; }
 warn() { printf '%s  [!]%s %s\n' "$YELLOW" "$RESET" "$*" >&2; }
 die() {
-    printf '\n%s  [ERROR]%s %s\n\n' "$RED" "$*" "$RESET" >&2
+    printf '\n%s  [ERROR]%s %s\n\n' "$RED" "$RESET" "$*" >&2
     exit 1
 }
 
-# Any unexpected error — with the line number, so there is something to attach
+# Any unexpected error - with the line number, so there is something to attach
 # to a report.
-trap 'printf "\n%s  [ERROR]%s A command failed (line %s).%s\n\n" "$RED" "$LINENO" "$RESET" >&2' ERR
+trap 'printf "\n%s  [ERROR]%s A command failed (line %s).%s\n\n" "$RED" "$RESET" "$LINENO" "$RESET" >&2' ERR
 
 usage() {
     cat <<'TEXT'
@@ -83,14 +83,14 @@ Usage:
     bash install.sh                    install or update the journal
     bash install.sh --install-docker   agree to install Docker without asking
                                        (Linux only, supported distributions
-                                       only; also works without a terminal —
+                                       only; also works without a terminal -
                                        for automation)
     bash install.sh --no-prompt        no questions: instructions only
     bash install.sh --help             this help
 
 The journal cannot run without Docker. On Linux the script checks the
 distribution in /etc/os-release and, if the system is supported, asks
-"Install Docker now? [y/N]" — the default answer is NO (just press Enter).
+"Install Docker now? [y/N]" - the default answer is NO (just press Enter).
 In a non-interactive environment (no terminal) the question is not asked:
 the script prints the commands for a manual installation and exits with
 code 1.
@@ -98,7 +98,7 @@ code 1.
 On macOS and Windows there is no automatic installation: Docker Desktop is
 installed by hand. It is a large application with a graphical wizard, it has
 to be started after installation, and the Docker Desktop licence for large
-organisations is paid — the decision to install must stay with a human. The
+organisations is paid - the decision to install must stay with a human. The
 script shows the official download page and a warning about the licence.
 
 Environment variables:
@@ -153,7 +153,7 @@ set_env() {
 }
 
 #: Random string of Latin letters and digits, length $1: for keys and passwords.
-#: Tries openssl, python3 and /dev/urandom in turn — the first one that returns
+#: Tries openssl, python3 and /dev/urandom in turn - the first one that returns
 #: a string of the required length wins (python3 may be a Microsoft Store stub).
 random_string() {
     length=$1
@@ -292,7 +292,7 @@ print_linux_install_hint() {
 print_unsupported_linux() {
     say ""
     say "Your system ($DISTRO_ID ${DISTRO_VERSION:-no version}) is not on the list"
-    say "of systems supported for automatic installation — I will not install Docker"
+    say "of systems supported for automatic installation - I will not install Docker"
     say "myself, so as not to break the system."
     say ""
     say "${BOLD}Install Docker manually:${RESET}"
@@ -321,7 +321,7 @@ print_macos_message() {
 Docker Desktop for macOS is installed by hand: it is a large application
 with a graphical wizard, it has to be started after installation, and
 sometimes the system has to be rebooted as well. Besides, the Docker Desktop
-licence for large organisations is paid — the decision to install must be
+licence for large organisations is paid - the decision to install must be
 yours. I do not install it and I do not download anything.
 TEXT
     say ""
@@ -403,14 +403,14 @@ install_docker_linux() {
     current_user=${USER:-$(id -un 2>/dev/null || echo user)}
     say "Running: $SUDO usermod -aG docker $current_user"
     if ! $SUDO usermod -aG docker "$current_user"; then
-        warn "Could not add $current_user to the docker group — run docker through sudo."
+        warn "Could not add $current_user to the docker group - run docker through sudo."
     fi
 
     cat <<TEXT
 
 Docker is installed. Two steps are left before the journal can start:
 
-  1. Log out and log in again (or run  newgrp docker ) — otherwise docker will
+  1. Log out and log in again (or run  newgrp docker ) - otherwise docker will
      not let you in without sudo: the new group only applies to a new session.
   2. Run the installation again:  bash install.sh
 
@@ -420,7 +420,7 @@ TEXT
 }
 
 #: Single handling of "Docker not found" / "docker compose missing".
-#: $1 — what is missing: "docker" or "docker compose".
+#: $1 - what is missing: "docker" or "docker compose".
 handle_missing_docker() {
     missing=$1
     os=$(detect_os)
@@ -492,7 +492,7 @@ handle_missing_docker_linux() {
             y | Y | yes | YES | Yes) ;;
             *)
                 say ""
-                say "Installation cancelled — nothing on this machine was changed."
+                say "Installation cancelled - nothing on this machine was changed."
                 print_linux_install_hint
                 exit 1
                 ;;
@@ -504,8 +504,8 @@ handle_missing_docker_linux() {
 
 # --- Start --------------------------------------------------------------------
 
-printf '\n%sElectronic attendance journal — installation%s\n' "$BOLD" "$RESET"
-printf '%sDjango 5 + PostgreSQL + Docker · directory: %s%s\n' "$DIM" "$SCRIPT_DIR" "$RESET"
+printf '\n%sElectronic attendance journal - installation%s\n' "$BOLD" "$RESET"
+printf '%sDjango 5 + PostgreSQL + Docker, directory: %s%s\n' "$DIM" "$SCRIPT_DIR" "$RESET"
 
 # --- 1. Docker and docker compose ---------------------------------------------
 
@@ -539,11 +539,11 @@ fi
 step "Preparing settings (.env)"
 
 if [ -f "$ENV_FILE" ]; then
-    ok "The .env file already exists — leaving it as it is."
+    ok "The .env file already exists - leaving it as it is."
     note "Secrets and settings are not recreated: re-running does not change them."
 else
     if [ ! -f "$ENV_TEMPLATE" ]; then
-        die "The file $ENV_TEMPLATE is missing — download the project in full (the settings template is part of it)."
+        die "The file $ENV_TEMPLATE is missing - download the project in full (the settings template is part of it)."
     fi
     cp "$ENV_TEMPLATE" "$ENV_FILE"
     chmod 600 "$ENV_FILE" 2>/dev/null || true
@@ -585,7 +585,7 @@ if [ -n "$missing" ]; then
   and run install.sh again: it will create the file with random secrets."
 fi
 if [ "${#secret_key}" -lt 50 ]; then
-    die "SECRET_KEY in .env is shorter than 50 characters — the journal will not start like that.
+    die "SECRET_KEY in .env is shorter than 50 characters - the journal will not start like that.
   Generate a new key: openssl rand -base64 64 | tr -dc 'A-Za-z0-9' | cut -c1-64
   Note: changing SECRET_KEY signs all users out of the journal."
 fi
@@ -597,7 +597,7 @@ step "Checking the configuration"
 
 if ! compose config -q; then
     die "docker compose rejected the configuration (message above).
-  This is usually an unset or wrong variable in .env — compare it with .env.example."
+  This is usually an unset or wrong variable in .env - compare it with .env.example."
 fi
 ok "The configuration is valid."
 
@@ -637,11 +637,11 @@ while [ "$ready" -eq 0 ]; do
     esac
     if [ "$not_running" -ge 3 ]; then
         printf '\n'
-        warn "Container $SERVICE is not running — the journal will not come up."
+        warn "Container $SERVICE is not running - the journal will not come up."
         compose logs --tail=40 "$SERVICE" || true
         die "The journal did not start.
   See the full logs: docker compose logs $SERVICE
-  The cause is usually visible in the first lines of the container log — the
+  The cause is usually visible in the first lines of the container log - the
   migration step and the start of the application."
     fi
 
@@ -653,7 +653,7 @@ while [ "$ready" -eq 0 ]; do
         compose logs --tail=60 "$SERVICE" || true
         die "The journal did not come up within ${HEALTH_TIMEOUT} s.
   Logs: docker compose logs $SERVICE
-  If the build is still downloading images — run it again, the progress is kept.
+  If the build is still downloading images - run it again, the progress is kept.
   Another timeout: HEALTH_TIMEOUT=900 bash install.sh"
     fi
 
@@ -682,7 +682,7 @@ cat <<TEXT
   Django admin:     $url/admin/
   Demo page:        $url/demo/   (appears with DEMO_MODE=1)
 
-  FIRST OPENING — SETUP WIZARD
+  FIRST OPENING - SETUP WIZARD
   Open the address in a browser: the journal will show the initial setup page
   (/setup/). There the main administrator is created: login, name and password,
   the journal name and, optionally, a logo. After that the wizard does not
@@ -691,8 +691,8 @@ cat <<TEXT
   DEMO MODE (sign-in without a password, separate demo database)
   1. In the .env file set DEMO_MODE=1
   2. Restart: bash install.sh   (or: docker compose up -d)
-  3. Open $url/demo/ and click "Sign in as a methodologist"
-     or "Sign in as a teacher".
+  3. Open $url/demo/ and click "Sign in as the methodist"
+     or "Sign in as the teacher".
   Demo data lives in a separate database and does not affect the working journal.
   Before real work set DEMO_MODE=0 back.
 
@@ -702,10 +702,10 @@ cat <<TEXT
   "Backup" section in the journal (administrator only).
 
   USEFUL COMMANDS (in the project directory)
-    docker compose logs -f $SERVICE      — follow the logs
-    docker compose ps                    — container status
-    docker compose down                  — stop (data is kept)
-    docker compose up -d --build         — start after replacing files
+    docker compose logs -f $SERVICE          follow the logs
+    docker compose ps                   container status
+    docker compose down                 stop (data is kept)
+    docker compose up -d --build        start after replacing files
 
   Settings are in the .env file, details are in README.md
   and docs/admin-guide.md.

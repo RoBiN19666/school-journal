@@ -1,30 +1,30 @@
 ﻿# =============================================================================
-#  Электронный журнал посещаемости — установка одной командой (Windows)
+#  Electronic attendance journal - one-command installation (Windows)
 # =============================================================================
-#  Запуск в PowerShell (из папки проекта):
+#  Run in PowerShell (from the project folder):
 #      powershell -ExecutionPolicy Bypass -File .\install.ps1
 #
-#  Что делает:
-#    1. проверяет, что есть Docker и docker compose; если Docker нет —
-#       объясняет, что Docker Desktop для Windows ставится вручную
-#       (это большое приложение с графическим мастером, платной лицензией
-#       для крупных организаций и перезагрузкой), и выходит. Сам установщик
-#       ничего не скачивает и не ставит;
-#    2. создаёт .env из .env.example (если .env ещё нет) со случайными
-#       SECRET_KEY и POSTGRES_PASSWORD и рабочими настройками по умолчанию;
-#    3. собирает и запускает контейнеры: docker compose up -d --build;
-#    4. ждёт, пока журнал ответит на самопроверку (manage.py healthcheck);
-#    5. печатает адрес журнала и что делать при первом открытии.
+#  What it does:
+#    1. checks that Docker and docker compose are available; if Docker is
+#       missing, it explains that Docker Desktop for Windows is installed by
+#       hand (a large application with a graphical wizard, a paid licence for
+#       large organisations and a reboot) and exits. The installer itself
+#       downloads nothing and installs nothing;
+#    2. creates .env from .env.example (if .env does not exist yet) with random
+#       SECRET_KEY and POSTGRES_PASSWORD and working default settings;
+#    3. builds and starts the containers: docker compose up -d --build;
+#    4. waits until the journal answers its self-check (manage.py healthcheck);
+#    5. prints the journal address and what to do on first opening.
 #
-#  Повторный запуск безопасен: существующий .env не переписывается, секреты
-#  не пересоздаются, данные в томах не трогаются.
+#  Re-running is safe: an existing .env is not overwritten, secrets are not
+#  regenerated, data in the volumes is left alone.
 # =============================================================================
 
 [CmdletBinding()]
 param(
-    # Сколько секунд ждать готовности журнала.
+    # How many seconds to wait for the journal to become ready.
     [int]$HealthTimeout = 300,
-    # Пауза между проверками готовности, секунд.
+    # Pause between readiness checks, seconds.
     [int]$HealthInterval = 4
 )
 
@@ -35,7 +35,7 @@ $EnvFile = Join-Path (Get-Location) '.env'
 $EnvTemplate = Join-Path (Get-Location) '.env.example'
 $Service = 'web'
 
-# --- Оформление вывода -------------------------------------------------------
+# --- Output formatting -------------------------------------------------------
 
 function Write-Step([string]$Text) {
     Write-Host ''
@@ -56,37 +56,38 @@ function Write-Warn([string]$Text) {
 
 function Fail([string]$Text) {
     Write-Host ''
-    Write-Host "  [ОШИБКА] $Text" -ForegroundColor Red
+    Write-Host "  [ERROR] $Text" -ForegroundColor Red
     Write-Host ''
     exit 1
 }
 
-# Сообщение «Docker Desktop ставится вручную». Никакой установки и вопросов:
-# так решили осознанно — см. README, раздел «Если Docker не установлен».
+# The message "Docker Desktop is installed by hand". No installation, no
+# questions: this is a deliberate decision - see README, section
+# "If Docker is not installed".
 function Show-DockerManualMessage([string]$Missing) {
     Write-Host ''
     if ($Missing -eq 'docker') {
-        Write-Warn 'Docker не найден.'
-        Write-Host 'Docker нужен, чтобы запустить журнал в контейнерах: PostgreSQL и само приложение.'
+        Write-Warn 'Docker not found.'
+        Write-Host 'Docker is required to run the journal in containers: PostgreSQL and the application itself.'
     }
     else {
-        Write-Warn "Docker есть, но нет 'docker compose'."
-        Write-Host 'Плагин compose нужен, чтобы одной командой поднять базу и приложение.'
+        Write-Warn "Docker is installed, but there is no 'docker compose'."
+        Write-Host 'The compose plugin is required to bring up the database and the application with one command.'
     }
     Write-Host @"
 
-Docker Desktop для Windows ставится вручную — установщик журнала его сам
-не ставит и ничего не скачивает. Причины:
-  * это большое приложение с графическим мастером настройки;
-  * после установки требуется перезагрузка системы;
-  * лицензия Docker Desktop для крупных организаций платная —
-    решение об установке должно остаться за вами.
+Docker Desktop for Windows is installed by hand - the journal installer does
+not install it and downloads nothing. The reasons:
+  * it is a large application with a graphical setup wizard;
+  * a system reboot is required after installation;
+  * the Docker Desktop licence for large organisations is paid - the decision
+    to install must stay with you.
 
-  Страница загрузки:    https://www.docker.com/products/docker-desktop/
-  Установка на Windows: https://docs.docker.com/desktop/install/windows-install/
+  Download page:         https://www.docker.com/products/docker-desktop/
+  Installing on Windows: https://docs.docker.com/desktop/install/windows-install/
 
-После установки запустите Docker Desktop, дождитесь «Engine running»
-и повторите установку журнала:
+After installation start Docker Desktop, wait until it says "Engine running"
+and run the journal installation again:
   powershell -ExecutionPolicy Bypass -File .\install.ps1
 "@
     exit 1
@@ -94,8 +95,8 @@ Docker Desktop для Windows ставится вручную — установ
 
 # --- Docker ------------------------------------------------------------------
 
-# Вызов docker с предсказуемой обработкой кода возврата: в Windows PowerShell
-# вывод docker в stderr не должен превращаться в исключение.
+# Calling docker with predictable exit-code handling: in Windows PowerShell
+# docker output on stderr must not turn into an exception.
 function Invoke-Docker {
     param(
         [string[]]$Arguments,
@@ -116,7 +117,7 @@ function Invoke-Docker {
     }
 }
 
-# --- Файл .env ---------------------------------------------------------------
+# --- The .env file -----------------------------------------------------------
 
 function Get-EnvValue([string]$Key) {
     if (-not (Test-Path -LiteralPath $EnvFile)) { return '' }
@@ -140,8 +141,8 @@ function Set-EnvValue([string]$Key, [string]$Value) {
         }
     }
     if (-not $replaced) { $lines.Add("$Key=$Value") }
-    # UTF-8 без BOM и переводы строк LF: docker compose читает .env построчно,
-    # и «\r» в конце значения попал бы в пароль базы.
+    # UTF-8 without BOM and LF line endings: docker compose reads .env line by
+    # line, and a "\r" at the end of a value would end up in the database password.
     $encoding = New-Object System.Text.UTF8Encoding($false)
     $content = ($lines -join "`n") + "`n"
     [System.IO.File]::WriteAllText($EnvFile, $content, $encoding)
@@ -159,15 +160,15 @@ function New-RandomString([int]$Length) {
     return (-join $chars)
 }
 
-# --- Начало ------------------------------------------------------------------
+# --- Start -------------------------------------------------------------------
 
 Write-Host ''
-Write-Host 'Электронный журнал посещаемости — установка' -ForegroundColor White
-Write-Host "Django 5 + PostgreSQL + Docker · каталог: $PSScriptRoot" -ForegroundColor DarkGray
+Write-Host 'Electronic attendance journal - installation' -ForegroundColor White
+Write-Host "Django 5 + PostgreSQL + Docker, directory: $PSScriptRoot" -ForegroundColor DarkGray
 
-# --- 1. Docker и docker compose ----------------------------------------------
+# --- 1. Docker and docker compose --------------------------------------------
 
-Write-Step 'Проверяю Docker'
+Write-Step 'Checking Docker'
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     Show-DockerManualMessage 'docker'
@@ -176,9 +177,9 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
 $info = Invoke-Docker -Arguments @('info') -Capture
 if ($info.Code -ne 0) {
     Fail @"
-Docker установлен, но его служба не отвечает.
-  Запустите Docker Desktop и дождитесь, пока он напишет «Engine running».
-  Проверить самому: docker info
+Docker is installed, but its service is not responding.
+  Start Docker Desktop and wait until it says "Engine running".
+  Check it yourself: docker info
 "@
 }
 $dockerVersion = (Invoke-Docker -Arguments @('--version') -Capture).Output.Trim()
@@ -190,17 +191,17 @@ if ($composeVersion.Code -ne 0) {
 }
 Write-Ok "docker compose: $($composeVersion.Output.Trim())"
 
-# --- 2. Файл .env -------------------------------------------------------------
+# --- 2. The .env file --------------------------------------------------------
 
-Write-Step 'Готовлю настройки (.env)'
+Write-Step 'Preparing settings (.env)'
 
 if (Test-Path -LiteralPath $EnvFile) {
-    Write-Ok 'Файл .env уже есть — оставляю как есть.'
-    Write-Note 'Секреты и настройки не пересоздаются: повторный запуск их не меняет.'
+    Write-Ok 'The .env file already exists - leaving it as it is.'
+    Write-Note 'Secrets and settings are not recreated: re-running does not change them.'
 }
 else {
     if (-not (Test-Path -LiteralPath $EnvTemplate)) {
-        Fail "Нет файла .env.example — скачайте проект целиком (в нём лежит шаблон настроек)."
+        Fail "The file .env.example is missing - download the project in full (the settings template is part of it)."
     }
     Copy-Item -LiteralPath $EnvTemplate -Destination $EnvFile -Force
 
@@ -215,13 +216,14 @@ else {
 
     if ($secretKey.Length -lt 50 -or $dbPassword.Length -lt 16) {
         Remove-Item -LiteralPath $EnvFile -Force -ErrorAction SilentlyContinue
-        Fail 'Не удалось сгенерировать случайные значения. Создайте .env вручную из .env.example.'
+        Fail 'Could not generate random values. Create .env manually from .env.example.'
     }
-    Write-Ok 'Файл .env создан из .env.example.'
-    Write-Note 'SECRET_KEY и POSTGRES_PASSWORD сгенерированы случайно и сохранены только в .env.'
+    Write-Ok 'The .env file has been created from .env.example.'
+    Write-Note 'SECRET_KEY and POSTGRES_PASSWORD were generated randomly and are stored only in .env.'
 }
 
-# Обязательные значения: без них контейнеры не поднимутся, лучше сказать сразу.
+# Required values: without them the containers will not come up, better to say
+# it right away.
 $missing = @()
 if (-not (Get-EnvValue 'SECRET_KEY')) { $missing += 'SECRET_KEY' }
 if (-not (Get-EnvValue 'POSTGRES_PASSWORD')) { $missing += 'POSTGRES_PASSWORD' }
@@ -229,55 +231,55 @@ if (-not (Get-EnvValue 'DEBUG')) { $missing += 'DEBUG' }
 if (-not (Get-EnvValue 'ALLOWED_HOSTS')) { $missing += 'ALLOWED_HOSTS' }
 if ($missing.Count -gt 0) {
     Fail @"
-В файле .env не заданы: $($missing -join ', ')
-  Откройте .env и заполните их (подсказки — в .env.example) или удалите .env
-  и запустите install.ps1 снова: он создаст файл со случайными секретами.
+The .env file does not set: $($missing -join ', ')
+  Open .env and fill them in (hints are in .env.example) or delete .env
+  and run install.ps1 again: it will create the file with random secrets.
 "@
 }
 $secretKey = Get-EnvValue 'SECRET_KEY'
 if ($secretKey.Length -lt 50) {
     Fail @"
-SECRET_KEY в .env короче 50 символов — журнал так не запустится.
-  Сгенерируйте новый ключ (в PowerShell):
+SECRET_KEY in .env is shorter than 50 characters - the journal will not start like that.
+  Generate a new key (in PowerShell):
     -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 64 | % {[char]$_})
-  Внимание: со сменой SECRET_KEY все пользователи выйдут из журнала.
+  Note: changing SECRET_KEY signs all users out of the journal.
 "@
 }
-Write-Ok "Обязательные настройки на месте (DEBUG=$(Get-EnvValue 'DEBUG'), ALLOWED_HOSTS=$(Get-EnvValue 'ALLOWED_HOSTS'))."
+Write-Ok "Required settings are in place (DEBUG=$(Get-EnvValue 'DEBUG'), ALLOWED_HOSTS=$(Get-EnvValue 'ALLOWED_HOSTS'))."
 
-# --- 3. Конфигурация compose -------------------------------------------------
+# --- 3. Compose configuration ------------------------------------------------
 
-Write-Step 'Проверяю конфигурацию'
+Write-Step 'Checking the configuration'
 
 $config = Invoke-Docker -Arguments @('compose', 'config', '-q') -Capture
 if ($config.Code -ne 0) {
     Write-Host $config.Output
     Fail @"
-docker compose не принял конфигурацию (сообщение выше).
-  Обычно это незаполненная или неверная переменная в .env — сравните её с .env.example.
+docker compose rejected the configuration (message above).
+  This is usually an unset or wrong variable in .env - compare it with .env.example.
 "@
 }
-Write-Ok 'Конфигурация верная.'
+Write-Ok 'The configuration is valid.'
 
-# --- 4. Сборка и запуск ------------------------------------------------------
+# --- 4. Build and start ------------------------------------------------------
 
-Write-Step 'Собираю и запускаю контейнеры'
-Write-Note 'Первая сборка занимает несколько минут: скачиваются образы и ставятся библиотеки.'
+Write-Step 'Building and starting containers'
+Write-Note 'The first build takes a few minutes: images are downloaded and libraries are installed.'
 $up = Invoke-Docker -Arguments @('compose', 'up', '-d', '--build')
 if ($up.Code -ne 0) {
     Fail @"
-Контейнеры не запустились.
-  Посмотрите причину: docker compose logs --tail=100 web
-  Частые случаи (нет доступа к Docker Hub, занят порт 8000) разобраны в README,
-  раздел «Если что-то пошло не так».
+The containers did not start.
+  Look at the reason: docker compose logs --tail=100 web
+  Common cases (no access to Docker Hub, port 8000 already in use) are covered in
+  the README, section 'If something went wrong'.
 "@
 }
-Write-Ok "Контейнеры запущены (db и $Service)."
+Write-Ok "Containers are running (db and $Service)."
 
-# --- 5. Ожидание готовности --------------------------------------------------
+# --- 5. Waiting for readiness ------------------------------------------------
 
-Write-Step 'Жду готовности журнала'
-Write-Note "Самопроверка каждые $HealthInterval с, максимум $HealthTimeout с."
+Write-Step 'Waiting for the journal to become ready'
+Write-Note "Self-check every $HealthInterval s, $HealthTimeout s maximum."
 
 $started = Get-Date
 $notRunning = 0
@@ -289,7 +291,7 @@ while (-not $ready) {
         break
     }
 
-    if ($probe.Output -match 'is not running|not running|не запущен') {
+    if ($probe.Output -match 'is not running|not running') {
         $notRunning++
     }
     else {
@@ -297,25 +299,26 @@ while (-not $ready) {
     }
     if ($notRunning -ge 3) {
         Write-Host ''
-        Write-Warn "Контейнер $Service не работает — журнал не поднимется."
+        Write-Warn "Container $Service is not running - the journal will not come up."
         $null = Invoke-Docker -Arguments @('compose', 'logs', '--tail=40', $Service)
         Fail @"
-Журнал не запустился.
-  Смотрите полные логи: docker compose logs $Service
-  Причину чаще всего видно в первых строках после «==> Применяю миграции…».
+The journal did not start.
+  See the full logs: docker compose logs $Service
+  The cause is usually visible in the first lines of the container log - the
+  migration step and the start of the application.
 "@
     }
 
     if (((Get-Date) - $started).TotalSeconds -ge $HealthTimeout) {
         Write-Host ''
-        Write-Warn "Журнал не ответил за $HealthTimeout с."
+        Write-Warn "The journal did not answer within $HealthTimeout s."
         $null = Invoke-Docker -Arguments @('compose', 'ps')
         $null = Invoke-Docker -Arguments @('compose', 'logs', '--tail=60', $Service)
         Fail @"
-Журнал не поднялся за $HealthTimeout с.
-  Логи: docker compose logs $Service
-  Если сборка долго скачивает образы — запустите снова, прогресс сохраняется.
-  Другой таймаут: powershell -ExecutionPolicy Bypass -File .\install.ps1 -HealthTimeout 900
+The journal did not come up within $HealthTimeout s.
+  Logs: docker compose logs $Service
+  If the build is still downloading images - run it again, the progress is kept.
+  Another timeout: powershell -ExecutionPolicy Bypass -File .\install.ps1 -HealthTimeout 900
 "@
     }
 
@@ -323,9 +326,9 @@ while (-not $ready) {
     Start-Sleep -Seconds $HealthInterval
 }
 Write-Host ''
-Write-Ok 'Журнал отвечает, самопроверка без ошибок.'
+Write-Ok 'The journal is answering, the self-check is clean.'
 
-# --- 6. Итог -----------------------------------------------------------------
+# --- 6. Summary --------------------------------------------------------------
 
 $port = Get-EnvValue 'WEB_PORT'
 if (-not ($port -match '^\d+$')) { $port = '8000' }
@@ -333,40 +336,40 @@ $url = "http://localhost:$port"
 
 Write-Host ''
 Write-Host '==============================================================================' -ForegroundColor White
-Write-Host '  ЖУРНАЛ ЗАПУЩЕН' -ForegroundColor Green
+Write-Host '  ELECTRONIC ATTENDANCE JOURNAL IS RUNNING' -ForegroundColor Green
 Write-Host '==============================================================================' -ForegroundColor White
 Write-Host @"
 
-  Адрес:            $url
-  Админка Django:   $url/admin/
-  Демо-страница:    $url/demo/   (появляется при DEMO_MODE=1)
+  Address:          $url
+  Django admin:     $url/admin/
+  Demo page:        $url/demo/   (appears with DEMO_MODE=1)
 
-  ПЕРВОЕ ОТКРЫТИЕ — МАСТЕР НАСТРОЙКИ
-  Откройте адрес в браузере: журнал сам покажет страницу первичной настройки
-  (/setup/). Там создаётся главный администратор: логин, имя и пароль, название
-  журнала и, по желанию, логотип. После этого мастер больше не появляется,
-  а вход выполняется по созданному логину на странице $url/login/.
+  FIRST OPENING - SETUP WIZARD
+  Open the address in a browser: the journal will show the initial setup page
+  (/setup/). There the main administrator is created: login, name and password,
+  the journal name and, optionally, a logo. After that the wizard does not
+  appear again, and you sign in with the created login at $url/login/.
 
-  ДЕМО-РЕЖИМ (вход без пароля, отдельная демонстрационная база)
-  1. В файле .env поставьте DEMO_MODE=1
-  2. Перезапустите: powershell -ExecutionPolicy Bypass -File .\install.ps1
-  3. Откройте $url/demo/ и нажмите «Войти как методист»
-     или «Войти как преподаватель».
-  Демо-данные лежат в отдельной базе и рабочий журнал не затрагивают.
-  Перед реальной работой верните DEMO_MODE=0.
+  DEMO MODE (sign-in without a password, separate demo database)
+  1. In the .env file set DEMO_MODE=1
+  2. Restart: powershell -ExecutionPolicy Bypass -File .\install.ps1
+  3. Open $url/demo/ and click "Sign in as the methodist"
+     or "Sign in as the teacher".
+  Demo data lives in a separate database and does not affect the working journal.
+  Before real work set DEMO_MODE=0 back.
 
-  ДАННЫЕ И РЕЗЕРВНЫЕ КОПИИ
-  База и загруженные файлы лежат в томах postgres_data и media_data и
-  сохраняются при обновлении и остановке. Копия всех данных — раздел
-  «Резервная копия» в журнале (только для администратора).
+  DATA AND BACKUPS
+  The database and the uploaded files live in the postgres_data and media_data
+  volumes and are kept through updates and shutdowns. A copy of all data is the
+  "Backup" section in the journal (administrator only).
 
-  ПОЛЕЗНЫЕ КОМАНДЫ (в каталоге проекта)
-    docker compose logs -f $Service     — смотреть логи
-    docker compose ps                   — состояние контейнеров
-    docker compose down                 — остановить (данные сохраняются)
-    docker compose up -d --build        — запустить после замены файлов
+  USEFUL COMMANDS (in the project directory)
+    docker compose logs -f $Service          follow the logs
+    docker compose ps                   container status
+    docker compose down                 stop (data is kept)
+    docker compose up -d --build        start after replacing files
 
-  Настройки — в файле .env, подробности — в README.md
-  и docs/admin-guide.md.
+  Settings are in the .env file, details are in README.md
+  and docs/admin-guide.md.
 
 "@

@@ -1,167 +1,185 @@
-﻿# Электронный журнал посещаемости
+﻿**[English](README.md)** · [Русский](README.ru.md)
 
-Веб-журнал посещаемости для образовательной организации: ученики, программы, группы
-с составом, расписание по адресам и полугодиям, отметки посещаемости, темы занятий
-с академическими часами, выгрузки в Excel и картинкой, резервные копии.
+# Electronic attendance journal
 
-Стек: **Django 5 + PostgreSQL 16 + Docker**, интерфейс — Django Templates и Tailwind CSS
-(стили лежат в проекте, сборка Node.js не нужна). Оценок нет — только посещаемость:
-`P` — присутствовал, `A` — отсутствовал, `L` — опоздал.
+A web attendance journal for an educational organisation: students, programmes, groups
+with their membership, the schedule by branch and term, attendance marks, class topics
+with academic hours, exports to Excel and as an image, backups.
 
-Текущая версия — **2.40.2** (история изменений — в [CHANGELOG.md](CHANGELOG.md)).
+Stack: **Django 5 + PostgreSQL 16 + Docker**, the interface is Django Templates and
+Tailwind CSS (the styles are part of the project, no Node.js build needed). There are no
+grades — attendance only: `P` — present, `A` — absent, `L` — late.
 
-![Сводка журнала](docs/screenshots/dashboard.png)
+The current version is **2.40.2** (the change history is in [CHANGELOG.md](CHANGELOG.md)).
 
-![Темы оформления: меню пользователя, плашки и карточка занятия](docs/themes-preview.png)
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" width="720" alt="Dashboard">
+  <br>
+  <sub><b>Dashboard</b> · summary for the term</sub>
+</p>
 
-## Возможности
+<p align="center">
+  <img src="docs/screenshots/schedule.png" width="540" alt="Schedule">
+  <br>
+  <sub><b>Schedule</b> · the week grid</sub>
+</p>
 
-* **Учебные годы и полугодия** с датами, которые можно менять; перенос программ, групп
-  и расписания из прошлого полугодия в новое одной командой в интерфейсе.
-* **Адреса (филиалы) и кабинеты.** Расписание, программы и отметки относятся к адресу;
-  время преподавателя общее для всех адресов, занятость кабинетов проверяется.
-* **Ученики** с отчеством и датой рождения, поиск по ФИО, импорт списка из Excel.
-* **Программы и группы** с составом, несколько преподавателей у программы, подмены
-  и отсутствия преподавателей.
-* **Расписание** в виде сетки и списком, разовые занятия, проверка конфликтов.
-* **Посещаемость** по неделям: отметки `P`/`A`/`L` по каждому ученику, темы занятий
-  и академические часы (1 академический час = 45 минут).
-* **Выгрузки:** Excel (посещаемость, темы, расписание, конкурсы, курсы) и расписание
-  картинкой PNG в вертикальной или горизонтальной ориентации.
-* **Роли:** главный администратор, администратор, методист (сотрудник УМО), преподаватель.
-* **Безопасность:** журнал заходов и событий, белые и чёрные списки IP, защита от подбора
-  пароля, авто-блокировка сканеров, настройки HTTPS.
-* **Оформление:** несколько тем, свой логотип и значок, название организации.
-* **Резервные копии:** один файл JSON со всеми данными, по желанию зашифрованный.
-* Интерфейс на русском и английском языках.
+<p align="center">
+  <img src="docs/screenshots/weeks.png" width="540" alt="Attendance">
+  <br>
+  <sub><b>Attendance</b> · the weekly marks table</sub>
+</p>
 
-## Требования
+![Interface themes: the user menu, badges and a class card](docs/themes-preview.png)
 
-* **Docker Engine 20.10+** и **Compose v2** (`docker compose`) — Docker Desktop
-  на Windows и macOS или Docker Engine на сервере. Python, PostgreSQL и библиотеки
-  ставить не нужно — они внутри контейнеров. Если Docker не установлен, см. раздел
-  [«Если Docker не установлен»](#если-docker-не-установлен).
-* Свободный порт **8000** (или другой — переменная `WEB_PORT`).
-* Интернет при первой сборке: скачиваются базовые образы и пакеты Python.
+## Features
 
-## Установка одной командой
+* **Academic years and terms** with dates that can be changed; moving programmes, groups
+  and the schedule from the previous term to the new one with a single command in the interface.
+* **Branches (addresses) and rooms.** The schedule, programmes and marks belong to a branch;
+  a teacher's time is shared across all branches, and room occupancy is checked.
+* **Students** with patronymic and date of birth, a search by full name, importing a list from Excel.
+* **Programmes and groups** with their membership, several teachers per programme, substitutions
+  and teacher absences.
+* **Schedule** as a grid and as a list, one-off classes, conflict checking.
+* **Attendance** by week: `P`/`A`/`L` marks for every student, class topics and academic hours
+  (1 academic hour = 45 minutes).
+* **Exports:** Excel (attendance, topics, schedule, competitions, courses) and the schedule as a
+  PNG image in portrait or landscape orientation.
+* **Roles:** chief administrator, administrator, methodist (teaching and methodology support
+  staff), teacher.
+* **Security:** a log of sign-ins and events, allow and deny lists of IP addresses, protection
+  against password guessing, automatic blocking of scanners, HTTPS settings.
+* **Appearance:** several themes, your own logo and favicon, the name of the organisation.
+* **Backups:** a single JSON file with all the data, encrypted if you wish.
+* The interface is available in Russian and English.
 
-**Linux и macOS:**
+## Requirements
+
+* **Docker Engine 20.10+** and **Compose v2** (`docker compose`) — Docker Desktop
+  on Windows and macOS or Docker Engine on a server. Python, PostgreSQL and the libraries
+  do not have to be installed — they are inside the containers. If Docker is not installed,
+  see the section [“If Docker is not installed”](#if-docker-is-not-installed).
+* A free port **8000** (or another one — the `WEB_PORT` variable).
+* Internet access during the first build: base images and Python packages are downloaded.
+
+## One-command installation
+
+**Linux and macOS:**
 
 ```bash
 bash install.sh
 ```
 
-**Windows** (PowerShell в папке проекта):
+**Windows** (PowerShell in the project folder):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-Скрипт делает всё сам:
+The script does everything itself:
 
-1. проверяет, что Docker установлен и отвечает, и что есть `docker compose`;
-2. создаёт `.env` из `.env.example`, если файла ещё нет: генерирует случайные
-   `SECRET_KEY` (64 символа) и `POSTGRES_PASSWORD` (40 символов), ставит `DEBUG=0`
-   и `ALLOWED_HOSTS=localhost,127.0.0.1`;
-3. собирает и запускает контейнеры `db` и `web` (`docker compose up -d --build`);
-4. ждёт готовности: опрашивает `python manage.py healthcheck` внутри контейнера
-   (до 5 минут) и показывает логи, если журнал не поднялся;
-5. печатает адрес журнала и что делать при первом открытии.
+1. checks that Docker is installed and responding, and that `docker compose` is available;
+2. creates `.env` from `.env.example` if the file does not exist yet: generates a random
+   `SECRET_KEY` (64 characters) and `POSTGRES_PASSWORD` (40 characters), sets `DEBUG=0`
+   and `ALLOWED_HOSTS=localhost,127.0.0.1`;
+3. builds and starts the `db` and `web` containers (`docker compose up -d --build`);
+4. waits until it is ready: polls `python manage.py healthcheck` inside the container
+   (up to 5 minutes) and shows the logs if the journal did not come up;
+5. prints the journal address and what to do on the first opening.
 
-После установки журнал открывается по адресу **http://localhost:8000**.
-Порт можно поменять в `.env`: `WEB_PORT=8080` → `http://localhost:8080`.
+After installation the journal opens at **http://localhost:8000**.
+The port can be changed in `.env`: `WEB_PORT=8080` → `http://localhost:8080`.
 
-> **Повторный запуск безопасен.** Если `.env` уже есть, скрипт его не трогает:
-> секреты и настройки остаются прежними, данные в томах `postgres_data` и `media_data`
-> сохраняются. Этот же скрипт используется для обновления версии.
+> **Re-running is safe.** If `.env` already exists, the script leaves it alone:
+> the secrets and settings stay as they were, and the data in the `postgres_data` and
+> `media_data` volumes is kept. The same script is used to update to a new version.
 
-Флаги установщика (только Linux, подробности — в разделе
-[«Если Docker не установлен»](#если-docker-не-установлен)):
+Installer flags (Linux only, details in the section
+[“If Docker is not installed”](#if-docker-is-not-installed)):
 
 ```bash
-bash install.sh --install-docker   # согласие на установку Docker без вопроса
-bash install.sh --no-prompt        # без вопросов: только инструкции
+bash install.sh --install-docker   # agree to install Docker without asking
+bash install.sh --no-prompt        # no questions: instructions only
 ```
 
-### Установка вручную (без скрипта)
+### Manual installation (without the script)
 
 ```bash
 cp .env.example .env
-# откройте .env и заполните SECRET_KEY и POSTGRES_PASSWORD
+# open .env and fill in SECRET_KEY and POSTGRES_PASSWORD
 docker compose up -d --build
-docker compose exec -T web python manage.py healthcheck   # ждём «ошибок: 0»
+docker compose exec -T web python manage.py healthcheck   # wait until it reports 0 errors
 ```
 
-`SECRET_KEY` — случайная строка не короче 50 символов, `POSTGRES_PASSWORD` — пароль
-базы. Сгенерировать:
+`SECRET_KEY` is a random string of at least 50 characters, `POSTGRES_PASSWORD` is the
+database password. Generate them:
 
 ```bash
 openssl rand -base64 64 | LC_ALL=C tr -dc 'A-Za-z0-9' | cut -c1-64   # SECRET_KEY
 openssl rand -hex 24                                                 # POSTGRES_PASSWORD
 ```
 
-## Если Docker не установлен
+## If Docker is not installed
 
-Журнал работает в контейнерах, поэтому без Docker он не запустится. При запуске
-`install.sh` проверяет `docker` и `docker compose` и, если чего-то нет, объясняет
-ситуацию и предлагает решение.
+The journal runs in containers, so it will not start without Docker. On launch
+`install.sh` checks `docker` and `docker compose` and, if something is missing, explains
+the situation and offers a solution.
 
 ### Linux
 
-Скрипт читает `/etc/os-release`, показывает, что определил, и спрашивает:
+The script reads `/etc/os-release`, shows what it detected and asks:
 
 ```
-Система: Ubuntu 24.04.1 LTS (ubuntu, noble 24.04)
-Буду ставить Docker официальным скриптом get.docker.com.
+System: Ubuntu 24.04.1 LTS (ubuntu, noble 24.04)
+Installing Docker with the official get.docker.com script.
 
-Установить сейчас? [y/N]
+Install Docker now? [y/N]
 ```
 
-* **Ответ по умолчанию — нет.** Enter или `n` отменяет установку: скрипт печатает
-  команды для ручной установки и выходит с кодом 1, ничего не меняя на машине.
-* **Ответ `y`** (или `да`) — скрипт скачивает официальный установщик
-  `get.docker.com`, запускает его (через `sudo`, если вы не root), затем выполняет
-  `sudo usermod -aG docker "$USER"`. Все выполняемые команды печатаются, вывод
-  установщика виден целиком. В конце — честное предупреждение: нужно **перелогиниться**
-  или выполнить `newgrp docker` (иначе `docker` не пустит без `sudo`), после чего
-  запустить `bash install.sh` снова.
-* **Нет терминала** (запуск из скрипта, CI, cron) — вопрос не задаётся: сразу
-  инструкции и код возврата 1. Для автоматической установки есть флаг
-  `--install-docker`, а `--no-prompt` отключает любые вопросы и оставляет только
-  инструкции.
+* **The default answer is no.** Enter or `n` cancels the installation: the script prints
+  the commands for a manual installation and exits with code 1, changing nothing on the machine.
+* **The answer `y`** (or `yes`) — the script downloads the official `get.docker.com`
+  installer, runs it (through `sudo` if you are not root), then runs
+  `sudo usermod -aG docker "$USER"`. Every command it executes is printed, and the output
+  of the installer is visible in full. At the end there is an honest warning: you have to
+  **log in again** or run `newgrp docker` (otherwise `docker` will not let you in without
+  `sudo`), and then run `bash install.sh` again.
+* **No terminal** (run from a script, CI, cron) — the question is not asked: instructions
+  straight away and exit code 1. For an automatic installation there is the flag
+  `--install-docker`, and `--no-prompt` disables any questions and leaves only the instructions.
 
-**Какие системы установщик ставит автоматически** (по данным `/etc/os-release`):
+**Which systems the installer sets up automatically** (according to `/etc/os-release`):
 
-| Система | Автоматическая установка |
+| System | Automatic installation |
 | --- | --- |
-| Ubuntu 22.04 LTS, 24.04 LTS | да |
-| Производные Ubuntu: Linux Mint, Pop!_OS и подобные (`ID_LIKE=ubuntu`) | да, если база — 22.04 или 24.04 |
-| Debian 11, 12 | да |
-| Fedora, RHEL, AlmaLinux, Rocky Linux 9 и новее | да |
-| Arch Linux, openSUSE, Alpine и прочие | нет: скрипт не ставит Docker, а показывает команду для вашего пакетного менеджера и ссылку на официальную инструкцию, код возврата 1 |
-| Неизвестный дистрибутив или пустая версия | нет, по той же причине |
+| Ubuntu 22.04 LTS, 24.04 LTS | yes |
+| Ubuntu derivatives: Linux Mint, Pop!_OS and similar (`ID_LIKE=ubuntu`) | yes, if the base is 22.04 or 24.04 |
+| Debian 11, 12 | yes |
+| Fedora, RHEL, AlmaLinux, Rocky Linux 9 and newer | yes |
+| Arch Linux, openSUSE, Alpine and others | no: the script does not install Docker, it shows the command for your package manager and a link to the official instructions, exit code 1 |
+| An unknown distribution or an empty version | no, for the same reason |
 
-Проверка версии обязательна: ставить Docker «наугад» на незнакомую систему
-рискованно, поэтому лучше показать человеку точную команду.
+Checking the version is mandatory: installing Docker “at random” on an unfamiliar system
+is risky, so it is better to show the person the exact command.
 
-### macOS и Windows
+### macOS and Windows
 
-Docker Desktop здесь устанавливается **только вручную**: это большое приложение
-с графическим мастером настройки, после установки его нужно запустить (а иногда
-и перезагрузить систему), а лицензия Docker Desktop для крупных организаций
-платная. Решение об установке должно остаться за человеком, поэтому `install.sh`
-и `install.ps1` ничего не скачивают и не устанавливают, не задают вопросов и не
-предлагают флагов установки — они только показывают, чего не хватает, и дают ссылки:
+Docker Desktop here is installed **by hand only**: it is a large application with a
+graphical setup wizard, it has to be started after installation (and sometimes the system
+has to be rebooted), and the Docker Desktop licence for large organisations is paid.
+The decision to install must stay with a human, so `install.sh` and `install.ps1` download
+and install nothing, ask no questions and offer no installation flags — they only show
+what is missing and give the links:
 
 * Docker Desktop: <https://www.docker.com/products/docker-desktop/>
-* установка на macOS: <https://docs.docker.com/desktop/install/mac-install/>
-* установка на Windows: <https://docs.docker.com/desktop/install/windows-install/>
+* installing on macOS: <https://docs.docker.com/desktop/install/mac-install/>
+* installing on Windows: <https://docs.docker.com/desktop/install/windows-install/>
 
-После установки запустите Docker Desktop, дождитесь «Engine running» и повторите
-установку журнала.
+After installation start Docker Desktop, wait for “Engine running” and run the journal
+installation again.
 
-### Другие дистрибутивы вручную
+### Other distributions manually
 
 ```bash
 # Debian/Ubuntu
@@ -174,201 +192,204 @@ sudo dnf install -y docker docker-compose-plugin
 sudo pacman -S docker docker-compose
 ```
 
-Официальные инструкции: <https://docs.docker.com/engine/install/>
+Official instructions: <https://docs.docker.com/engine/install/>
 
-### Если Docker уже есть
+### If Docker is already there
 
-Самому журналу нужен только **Docker Engine 20.10+** и **Compose v2**
-(`docker compose`), а каким способом они поставлены — неважно: Docker Desktop,
-пакет из репозитория дистрибутива, snap или корпоративная сборка. Если команды
-`docker` и `docker compose` работают, `install.sh` сразу переходит к установке журнала.
+The journal itself only needs **Docker Engine 20.10+** and **Compose v2**
+(`docker compose`), and how they were installed does not matter: Docker Desktop, a package
+from the distribution repository, snap or a corporate build. If the `docker` and
+`docker compose` commands work, `install.sh` goes straight to installing the journal.
 
-## Первый запуск
+## First launch
 
-Пока в базе нет ни одного активного администратора, журнал сам открывает мастер
-первичной настройки — `/setup/`.
+While there is no active administrator in the database, the journal opens the initial setup
+wizard by itself — `/setup/`.
 
-1. Создайте главного администратора: **логин** (латиница, цифры и символы `@ . + - _`),
-   **фамилия**, **имя**, при желании отчество и почту, **пароль** и его повтор.
-2. Задайте оформление: название журнала, название организации, короткий знак (1–4 буквы),
-   при желании логотип и значок (PNG, JPG, WEBP или ICO, до 1 МБ).
-3. Нажмите кнопку сохранения — журнал создаст учётную запись с ролью
-   «Главный администратор», сразу выполнит вход и откроет сводку.
+1. Create the chief administrator: **login** (Latin letters, digits and the characters
+   `@ . + - _`), **surname**, **name**, optionally the patronymic and an email address,
+   **password** and its confirmation.
+2. Set the appearance: the journal name, the organisation name, a short sign (1–4 letters),
+   optionally a logo and a favicon (PNG, JPG, WEBP or ICO, up to 1 MB).
+3. Press the save button — the journal creates an account with the role
+   “Chief administrator”, signs you in immediately and opens the dashboard.
 
-Мастер появляется один раз. Дальше вход — на странице `http://localhost:8000/login/`.
-Остальные сотрудники заводятся в самом журнале: **«Преподаватели»** (роль
-«Преподаватель») и **«Сотрудники УМО»** (методист или администратор). Пароль
-показывается один раз при создании, его можно сгенерировать кнопкой.
+The wizard appears once. After that you sign in on the page `http://localhost:8000/login/`.
+The other staff members are created inside the journal: **“Teachers”** (the role
+“Teacher”) and **“Teaching and methodology support staff”** (methodist or administrator).
+The password is shown once when the account is created, and it can be generated with a button.
 
-Если администратора нужно создать из консоли:
+If an administrator has to be created from the console:
 
 ```bash
 docker compose exec web python manage.py createsuperuser
 ```
 
-## Демо-режим
+## Demo mode
 
-Демо-режим показывает журнал без пароля и без риска для рабочих данных: он работает
-на отдельной демонстрационной базе, а изменения в ней не сохраняются.
+Demo mode shows the journal without a password and without risk to the working data: it runs
+on a separate demo database, and the changes in it are not saved.
 
-1. В `.env` поставьте `DEMO_MODE=1`.
-2. Перезапустите журнал:
+1. In `.env` set `DEMO_MODE=1`.
+2. Restart the journal:
 
 ```bash
 docker compose up -d
 ```
 
-3. Откройте `http://localhost:8000/demo/` и нажмите **«Войти как методист»** или
-   **«Войти как преподаватель»**.
+3. Open `http://localhost:8000/demo/` and press **“Sign in as the methodist”** or
+   **“Sign in as the teacher”**.
 
-В демо-базе уже есть готовые данные: ученики, сотрудники, несколько адресов
-с кабинетами, заполненное расписание с подменами и разовыми занятиями, отметки
-за последний месяц, темы занятий, конкурсы и курсы. Сессия демонстрации живёт
-до закрытия браузера.
+The demo database already has ready-made data: students, staff, several branches with rooms,
+a filled-in schedule with substitutions and one-off classes, marks for the last month, class
+topics, competitions and courses. The demo session lives until the browser is closed.
 
-Перед реальной работой верните `DEMO_MODE=0` и перезапустите журнал.
-Подробнее — в [docs/admin-guide.md](docs/admin-guide.md), раздел 12.
+Before real work set `DEMO_MODE=0` back and restart the journal.
+More details are in [docs/admin-guide.md](docs/admin-guide.md), section 12.
 
-## Основные разделы журнала
+## Main sections of the journal
 
-| Раздел | Что там |
+| Section | What is there |
 | --- | --- |
-| **Сводка** | счётчики (ученики, программы, группы, преподаватели), ближайшие занятия, быстрые ссылки |
-| **Ученики** | список с поиском по ФИО, карточки, импорт из Excel |
-| **Программы и группы** | программы активного полугодия и адреса, группы, состав групп |
-| **Расписание** | занятия по адресу: сетка и список, кабинеты, подмены, разовые занятия |
-| **Посещаемость** | недельный журнал: даты, темы, академические часы, отметки `P`/`A`/`L` |
-| **Темы занятий** | что заполнили преподаватели, фильтры и выгрузка |
-| **Учебные периоды** | годы и полугодия, даты, счётчики, перенос из другого полугодия |
-| **Преподаватели** | учётные записи, смена пароля, отсутствия |
-| **Отсутствия и подмены** | периоды отсутствия и замены на все занятия периода |
-| **Конкурсы** | участие учеников в конкурсах и олимпиадах |
-| **Повышение квалификации** | курсы педагогов |
-| **Выгрузка в Excel** | таблицы и расписание картинкой PNG |
-| **Сотрудники УМО** | методисты и администраторы (только администратор) |
-| **Безопасность** | почта и уведомления, доступ по IP, журнал заходов |
-| **Резервная копия** | скачать и восстановить данные |
-| **Демо-режим и демо-данные** | состояние демо-базы и её очистка |
-| **Кастомизация** | темы и оформление (только главный администратор) |
-| **Админка Django** | стандартная админка, адрес задаётся `ADMIN_URL` |
+| **Dashboard** | counters (students, programmes, groups, teachers), the nearest classes, quick links |
+| **Students** | a list with a search by full name, student cards, import from Excel |
+| **Programmes and groups** | the programmes of the active term and the branches, groups, group membership |
+| **Schedule** | classes by branch: a grid and a list, rooms, substitutions, one-off classes |
+| **Attendance** | the weekly journal: dates, topics, academic hours, `P`/`A`/`L` marks |
+| **Class topics** | what the teachers filled in, filters and an export |
+| **Academic periods** | years and terms, dates, counters, moving from another term |
+| **Teachers** | accounts, changing the password, absences |
+| **Absences and substitutions** | absence periods and replacements for all classes of a period |
+| **Competitions** | students taking part in competitions and olympiads |
+| **Professional development** | courses of the teachers |
+| **Export to Excel** | tables and the schedule as a PNG image |
+| **Teaching and methodology support staff** | methodists and administrators (administrator only) |
+| **Security** | email and notifications, access by IP, the sign-in log |
+| **Backup** | download and restore the data |
+| **Demo mode and demo data** | the state of the demo database and clearing it |
+| **Customisation** | themes and appearance (chief administrator only) |
+| **Django admin** | the standard admin, the address is set by `ADMIN_URL` |
 
-Преподаватель видит только свои занятия, свои недели и личную выгрузку; остальные
-разделы ему недоступны. Полное описание прав — в [docs/admin-guide.md](docs/admin-guide.md).
+A teacher sees only their own classes, their own weeks and a personal export; the other
+sections are not available to them. The full description of the permissions is in
+[docs/admin-guide.md](docs/admin-guide.md).
 
-## Резервные копии
+## Backups
 
-Раздел **«Резервная копия»** (`/backup/`, только для администраторов):
+The **“Backup”** section (`/backup/`, administrators only):
 
-* **Скачать копию** — один файл JSON со всеми данными журнала. С парольной фразой
-  файл скачивается зашифрованным (`.json.enc`).
-* **Восстановить** — из файла `.json` или `.json.enc`, в режиме «Добавить и обновить»
-  (ничего не удаляет) или «Полностью заменить» (с подтверждением).
+* **Download a copy** — a single JSON file with all the journal data. With a passphrase
+  the file is downloaded encrypted (`.json.enc`).
+* **Restore** — from a `.json` or `.json.enc` file, in the “Add and update” mode
+  (deletes nothing) or “Replace completely” (with confirmation).
 
-Что важно:
+What matters:
 
-* в копии лежат **хеши паролей** и персональные данные — не пересылайте файл по почте
-  и не выкладывайте в общие папки; парольную фразу журнал не хранит;
-* логотип и значок в копию не входят: они лежат в томе `media_data`;
-* база журнала живёт в томе `postgres_data` и сохраняется при обновлении и остановке.
+* the copy contains **password hashes** and personal data — do not send the file by email
+  and do not put it into shared folders; the journal does not store the passphrase;
+* the logo and the favicon are not part of the copy: they live in the `media_data` volume;
+* the journal database lives in the `postgres_data` volume and is kept through updates and
+  shutdowns.
 
-## Обновление
+## Updating
 
-1. Скачайте резервную копию (раздел «Резервная копия»).
-2. Замените файлы проекта на новую версию, **кроме `.env`** (свои настройки и секреты
-   переносятся как есть).
-3. Соберите и запустите:
+1. Download a backup (the “Backup” section).
+2. Replace the project files with the new version, **except `.env`** (your settings and
+   secrets are carried over as they are).
+3. Build and start:
 
 ```bash
 docker compose up -d --build
 ```
 
-Миграции базы применяются автоматически при старте контейнера `web`. Проверьте журнал:
+Database migrations are applied automatically when the `web` container starts. Check the journal:
 
 ```bash
 docker compose exec web python manage.py healthcheck
 ```
 
-В конце должно быть «Проверок: 11, ошибок: 0». После обновления нажмите в браузере
-**Ctrl+F5**, чтобы он заново скачал стили и скрипты.
+At the end there must be 11 checks and 0 errors. After updating press **Ctrl+F5** in the
+browser so that it downloads the styles and scripts again.
 
-> `docker compose down` останавливает журнал, данные сохраняются.
-> `docker compose down -v` **удаляет том с базой данных** — используйте, только если
-> действительно хотите начать с пустого журнала.
+> `docker compose down` stops the journal, the data is kept.
+> `docker compose down -v` **deletes the database volume** — use it only if you really want
+> to start with an empty journal.
 
-## Настройки
+## Settings
 
-Все настройки — в файле `.env` в корне проекта. Полный список с пояснениями —
-в [.env.example](.env.example). Самое нужное:
+All settings are in the `.env` file in the project root. The full list with explanations is
+in [.env.example](.env.example). The most important ones:
 
-| Переменная | По умолчанию | Зачем |
+| Variable | Default | Why |
 | --- | --- | --- |
-| `SECRET_KEY` | — (обязательна) | ключ подписи сессий и CSRF, не короче 50 символов |
-| `POSTGRES_PASSWORD` | — (обязательна) | пароль базы данных |
-| `DEBUG` | `0` | `1` — подробные ошибки, только для локальной отладки |
-| `ALLOWED_HOSTS` | `localhost,127.0.0.1` | домены, по которым открывается журнал |
-| `DEMO_MODE` | `0` | `1` — демонстрационный режим |
-| `DJANGO_LANGUAGE_CODE` | `ru` | язык интерфейса по умолчанию (`ru` или `en`) |
-| `TIME_ZONE` | `Europe/Moscow` | часовой пояс журнала |
-| `WEB_PORT` | `8000` | порт на машине, по которому открывается журнал |
-| `FUND_NAME` | из `settings.py` | название организации на странице входа и в подвале |
-| `ADMIN_URL` | `admin/` | адрес админки Django |
+| `SECRET_KEY` | — (required) | the signing key for sessions and CSRF, at least 50 characters |
+| `POSTGRES_PASSWORD` | — (required) | the database password |
+| `DEBUG` | `0` | `1` — detailed errors, for local debugging only |
+| `ALLOWED_HOSTS` | `localhost,127.0.0.1` | the domains the journal is opened by |
+| `DEMO_MODE` | `0` | `1` — demo mode |
+| `DJANGO_LANGUAGE_CODE` | `ru` | the default interface language (`ru` or `en`) |
+| `TIME_ZONE` | `Europe/Moscow` | the time zone of the journal |
+| `WEB_PORT` | `8000` | the port on the machine the journal is opened by |
+| `FUND_NAME` | from `settings.py` | the organisation name on the sign-in page and in the footer |
+| `ADMIN_URL` | `admin/` | the address of the Django admin |
 
-Для работы по HTTPS есть `TRUST_PROXY_HEADERS`, `SECURE_SSL_REDIRECT`,
-`SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SECURE_HSTS_SECONDS` — они выключены
-по умолчанию, чтобы журнал работал по `http://localhost`. Порядок публикации описан
-в [docs/admin-guide.md](docs/admin-guide.md), раздел 11.
+For working over HTTPS there are `TRUST_PROXY_HEADERS`, `SECURE_SSL_REDIRECT`,
+`SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SECURE_HSTS_SECONDS` — they are off by
+default so that the journal works over `http://localhost`. The publishing procedure is
+described in [docs/admin-guide.md](docs/admin-guide.md), section 11.
 
-## Документация
+## Documentation
 
-* [docs/admin-guide.md](docs/admin-guide.md) — руководство администратора: установка,
-  первый запуск, обновление, резервные копии, роли, рабочий процесс методиста,
-  выгрузки, безопасность и что делать, если что-то пошло не так.
-* [docs/NEXT-STEPS.md](docs/NEXT-STEPS.md) — состояние проекта и незакрытые задачи
-  (для разработчика).
-* [CHANGELOG.md](CHANGELOG.md) — история версий.
-* В самом журнале: страница **«О продукте»** (`/about/`) и справка **«Что где лежит»**
-  (`/faq/`) — доступны без входа.
+* [docs/admin-guide.md](docs/admin-guide.md) — the administrator guide: installation,
+  first launch, updating, backups, roles, the workflow of the methodist, exports, security
+  and what to do if something went wrong.
+* [docs/NEXT-STEPS.md](docs/NEXT-STEPS.md) — the state of the project and open tasks
+  (for the developer).
+* [CHANGELOG.md](CHANGELOG.md) — the version history.
+* Inside the journal: the **“About the product”** page (`/about/`) and the help page
+  **“Help: what is where”** (`/faq/`) — available without signing in.
 
-## Структура проекта
+## Project structure
 
 ```
 .
-├── docker-compose.yml        сервисы db (PostgreSQL) и web (gunicorn)
-├── Dockerfile                образ приложения
-├── entrypoint.sh             миграции, демо-база, статика, запуск gunicorn
-├── install.sh                установка и обновление (Linux, macOS)
-├── install.ps1               установка и обновление (Windows)
-├── .env.example              шаблон настроек, все переменные с пояснениями
+├── docker-compose.yml        the db (PostgreSQL) and web (gunicorn) services
+├── Dockerfile                the application image
+├── entrypoint.sh             migrations, the demo database, static files, starting gunicorn
+├── install.sh                installation and updating (Linux, macOS)
+├── install.ps1               installation and updating (Windows)
+├── .env.example              the settings template, all variables with explanations
 ├── manage.py
-├── school_journal/           настройки, маршруты, wsgi
-├── journal/                  приложение: модели, формы, представления, шаблоны, статика
-│   ├── tests/                автотесты
+├── school_journal/           settings, routes, wsgi
+├── journal/                  the application: models, forms, views, templates, static files
+│   ├── tests/                automated tests
 │   └── management/commands/  demo_setup, healthcheck, clear_demo, build_locales
-├── docs/                     документация
-└── locale/                   переводы интерфейса
+├── docs/                     documentation
+└── locale/                   interface translations
 ```
 
-## Если что-то пошло не так
+## If something went wrong
 
-**Сборка падает с `python:3.12-slim: TLS handshake timeout`.** Docker не может скачать
-образ с Docker Hub. Укажите зеркало в `.env`:
+**The build fails with `python:3.12-slim: TLS handshake timeout`.** Docker cannot download
+the image from Docker Hub. Specify a mirror in `.env`:
 
 ```dotenv
 PYTHON_IMAGE=dockerhub.timeweb.cloud/library/python:3.12-slim
 POSTGRES_IMAGE=dockerhub.timeweb.cloud/library/postgres:16-alpine
 ```
 
-и запустите установку снова. Другие зеркала: `mirror.gcr.io/library/...`,
+and run the installation again. Other mirrors: `mirror.gcr.io/library/...`,
 `public.ecr.aws/docker/library/...`.
 
-**Порт 8000 занят.** Поставьте в `.env` `WEB_PORT=8080` и перезапустите
-(`docker compose up -d`); журнал будет на `http://localhost:8080`.
+**Port 8000 is taken.** Set `WEB_PORT=8080` in `.env` and restart
+(`docker compose up -d`); the journal will be at `http://localhost:8080`.
 
-**`Не задан SECRET_KEY` или `Не задан ALLOWED_HOSTS`.** В `.env` пустые обязательные
-переменные. Проще всего удалить `.env` и запустить `install.sh` заново — он создаст
-файл со случайными секретами. Или заполните значения вручную (подсказки — в `.env.example`).
+**The journal reports that `SECRET_KEY` or `ALLOWED_HOSTS` is not set.** There are empty
+required variables in `.env`. The easiest way is to delete `.env` and run `install.sh` again —
+it will create the file with random secrets. Or fill in the values by hand (the hints are in
+`.env.example`).
 
-**Журнал не отвечает после установки.** Посмотрите логи:
+**The journal does not answer after installation.** Look at the logs:
 
 ```bash
 docker compose ps
@@ -376,25 +397,25 @@ docker compose logs --tail=100 web
 docker compose exec web python manage.py healthcheck
 ```
 
-**Не применяются стили после обновления.** Нажмите **Ctrl+F5** — браузер возьмёт
-новые файлы вместо кэша.
+**The styles are not applied after an update.** Press **Ctrl+F5** — the browser will take
+the new files instead of the cache.
 
-## Публикация в интернет
+## Publishing to the internet
 
-Журнал можно открыть наружу, но по умолчанию он настроен на локальный запуск.
-Перед публикацией: поставьте `DEBUG=0` (это уже так), добавьте свой домен в
-`ALLOWED_HOSTS`, включите HTTPS-флаги, при работе за nginx — `TRUST_PROXY_HEADERS=1`,
-при желании закройте админку нестандартным `ADMIN_URL` и включите блокировку
-сканирующих адресов. Пошагово — [docs/admin-guide.md](docs/admin-guide.md), раздел 11;
-готовый пример для fail2ban — [docs/fail2ban-journal.conf](docs/fail2ban-journal.conf).
+The journal can be opened to the outside, but by default it is configured for a local run.
+Before publishing: set `DEBUG=0` (it already is), add your domain to `ALLOWED_HOSTS`,
+enable the HTTPS flags, when working behind nginx — `TRUST_PROXY_HEADERS=1`, if you wish,
+close the admin with a non-standard `ADMIN_URL` and enable blocking of scanning addresses.
+Step by step — [docs/admin-guide.md](docs/admin-guide.md), section 11; a ready-made example
+for fail2ban — [docs/fail2ban-journal.conf](docs/fail2ban-journal.conf).
 
-## Лицензия
+## Licence
 
-Проект распространяется по лицензии **MIT**. Полный текст лицензии лежит в
-файле [LICENSE](LICENSE) в корне репозитория.
+The project is distributed under the **MIT** licence. The full text of the licence is in
+the [LICENSE](LICENSE) file in the repository root.
 
-Copyright (c) 2026 Воробьев И.В.
+Copyright (c) 2026 Vorobyov I.V.
 
-## Автор
+## Author
 
-Воробьев И.В.
+Vorobyov I.V.
