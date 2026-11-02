@@ -25,8 +25,8 @@
 
 <table align="center">
   <tr>
-    <td align="center"><img src="docs/screenshots/schedule.png" width="400" alt="Schedule"><br><sub><b>Schedule</b> · the week grid</sub></td>
-    <td align="center"><img src="docs/screenshots/weeks.png" width="400" alt="Attendance"><br><sub><b>Attendance</b> · the weekly marks table</sub></td>
+    <td align="center"><img src="docs/screenshots/schedule.png" width="400" alt="Расписание"><br><sub><b>Расписание</b> · сетка по дням</sub></td>
+    <td align="center"><img src="docs/screenshots/weeks.png" width="400" alt="Посещаемость"><br><sub><b>Посещаемость</b> · недельная таблица отметок</sub></td>
   </tr>
 </table>
 
