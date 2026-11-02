@@ -85,3 +85,8 @@ docker-compose.override.yml
 *.po.bak
 *.mo.bak
 locale/en/LC_MESSAGES/*.bak
+
+# Временные каталоги инструментов разработки
+.installer-tmp/
+.i18n-tmp/
+.agent-tools/
