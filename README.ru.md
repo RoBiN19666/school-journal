@@ -6,6 +6,7 @@
     <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
   </picture>
 </p>
+
 # Электронный журнал посещаемости
 
 Веб-журнал посещаемости для образовательной организации: ученики, программы, группы
@@ -108,6 +109,7 @@ cp .env.example .env
     <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
   </picture>
 </p>
+
 # откройте .env и заполните SECRET_KEY и POSTGRES_PASSWORD
 docker compose up -d --build
 docker compose exec -T web python manage.py healthcheck   # ждём «errors: 0»
@@ -191,6 +193,7 @@ Docker Desktop здесь устанавливается **только вруч
     <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
   </picture>
 </p>
+
 # Debian/Ubuntu
 sudo apt-get install -y docker.io docker-compose-plugin
 
@@ -200,6 +203,7 @@ sudo apt-get install -y docker.io docker-compose-plugin
     <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
   </picture>
 </p>
+
 # Fedora/RHEL
 sudo dnf install -y docker docker-compose-plugin
 
@@ -209,6 +213,7 @@ sudo dnf install -y docker docker-compose-plugin
     <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
   </picture>
 </p>
+
 # Arch
 sudo pacman -S docker docker-compose
 ```

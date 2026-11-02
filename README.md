@@ -6,6 +6,7 @@
     <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
   </picture>
 </p>
+
 # Electronic attendance journal
 
 A web attendance journal for an educational organisation: students, programmes, groups
@@ -109,6 +110,7 @@ cp .env.example .env
     <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
   </picture>
 </p>
+
 # open .env and fill in SECRET_KEY and POSTGRES_PASSWORD
 docker compose up -d --build
 docker compose exec -T web python manage.py healthcheck   # wait until it reports 0 errors
@@ -190,6 +192,7 @@ installation again.
     <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
   </picture>
 </p>
+
 # Debian/Ubuntu
 sudo apt-get install -y docker.io docker-compose-plugin
 
@@ -199,6 +202,7 @@ sudo apt-get install -y docker.io docker-compose-plugin
     <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
   </picture>
 </p>
+
 # Fedora/RHEL
 sudo dnf install -y docker docker-compose-plugin
 
@@ -208,6 +212,7 @@ sudo dnf install -y docker docker-compose-plugin
     <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
   </picture>
 </p>
+
 # Arch
 sudo pacman -S docker docker-compose
 ```
