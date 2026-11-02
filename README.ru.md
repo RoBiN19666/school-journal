@@ -1,4 +1,11 @@
-﻿<p align="center"><a href="README.md">English</a> &nbsp;·&nbsp; <b>Русский</b></p>
+<p align="center"><a href="README.md">English</a> &nbsp;·&nbsp; <b>Русский</b></p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
+    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
+  </picture>
+</p>
 
 # Электронный журнал посещаемости
 
@@ -16,11 +23,12 @@
   <sub><b>Главная</b> · сводка за полугодие</sub>
 </p>
 
-|  |  |
-|:---:|:---:|
-| <img src="docs/screenshots/schedule.png" width="400" alt="Расписание"><br><sub><b>Расписание</b> · сетка по дням</sub> | <img src="docs/screenshots/weeks.png" width="400" alt="Посещаемость"><br><sub><b>Посещаемость</b> · недельная таблица отметок</sub> |
-
-![Темы оформления: меню пользователя, плашки и карточка занятия](docs/themes-preview.png)
+<table align="center">
+  <tr>
+    <td align="center"><img src="docs/screenshots/schedule.png" width="400" alt="Расписание"><br><sub><b>Расписание</b> · сетка по дням</sub></td>
+    <td align="center"><img src="docs/screenshots/weeks.png" width="400" alt="Посещаемость"><br><sub><b>Посещаемость</b> · недельная таблица отметок</sub></td>
+  </tr>
+</table>
 
 ## Возможности
 
