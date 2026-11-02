@@ -119,22 +119,23 @@ docker compose exec web python manage.py healthcheck
 ```
 
 Команда ничего не меняет и не требует открытого браузера. Она печатает строку `[OK]`
-или `[ОШИБКА]` по каждой проверке: база данных, применённые миграции, основные таблицы,
+или `[ERROR]` по каждой проверке: база данных, применённые миграции, основные таблицы,
 файлы оформления, шаблоны, темы, настройки оформления, демонстрационная база, права на
 запись в папку загрузок, полные имена преподавателей, разовые занятия. В конце — итог:
 
 ```
-[OK] База данных: соединение есть (postgresql, school_journal)
+[OK] Database: connection works (postgresql, school_journal)
 ...
-[OK] Разовые занятия: разовых занятий с датой: 0, все совпадают с днём недели
-[ИНФО] Journal version: 2.41.1; часовой пояс: Asia/Yekaterinburg; USE_TZ: да; Django: 5.0.x
+[OK] One-off lessons: one-off lessons with a date: 0, all match their weekday
+[INFO] Journal version: 2.41.1; time zone: Asia/Yekaterinburg; USE_TZ: yes; Django: 5.0.14
 Checks: 11, errors: 0
 ```
 
+Вывод команды — на английском: её запускает установщик, и она же упоминается в README.
 Ожидаемый результат — **«Checks: 11, errors: 0»**. Если ошибок больше нуля, команда
-завершается с кодом 1: строки `[ОШИБКА]` показывают, что именно не так (например,
-«не применено миграций: 1» или «не найдены файлы»). Демонстрационная база при
-выключенном `DEMO_MODE` даёт строку «демо-режим выключен» — это не ошибка.
+завершается с кодом 1: строки `[ERROR]` показывают, что именно не так (например,
+«migrations not applied: 1» или «files not found»). Демонстрационная база при
+выключенном `DEMO_MODE` даёт строку «demo mode is off» — это не ошибка.
 
 6. Откройте журнал в браузере: `http://localhost:8000` (или адрес из `ALLOWED_HOSTS`).
 
@@ -234,13 +235,13 @@ docker compose exec web python manage.py healthcheck
 
 **Где смотреть историю изменений.** Файл `CHANGELOG.md` в корне проекта: записи идут от
 новой версии к старой, формат `МАЖОР.МИНОР.ПРАВКА`. Текущая версия журнала видна в двух
-местах: в выводе `healthcheck` (строка `[ИНФО] Версия журнала: …`) и в подвале каждой
+местах: в выводе `healthcheck` (строка `[INFO] Journal version: …`) и в подвале каждой
 страницы журнала (страница «О продукте» — адрес `/about/`).
 
 **Если после обновления что-то не так.**
 
-* Посмотрите, что именно проверка считает ошибкой: строки `[ОШИБКА]` в `healthcheck`
-  называют причину («не применено миграций», «не найдены файлы», «не собираются шаблоны»).
+* Посмотрите, что именно проверка считает ошибкой: строки `[ERROR]` в `healthcheck`
+  называют причину («migrations not applied», «files not found», «templates that fail to load»).
 * Посмотрите логи приложения — там трассировка ошибки и ответы сервера:
 
 ```bash
@@ -1135,7 +1136,7 @@ docker compose exec web python manage.py changepassword admin
 docker compose exec web python manage.py healthcheck
 ```
 
-   Строка «[OK] База данных: соединение есть (postgresql, school_journal)» называет базу.
+   Строка «[OK] Database: connection works (postgresql, school_journal)» называет базу.
 2. Создайте администратора: `docker compose exec web python manage.py createsuperuser`
    (см. выше) и войдите.
 3. Откройте «Сотрудники УМО», снимите галочку «Выключить учётную запись» у нужных людей
@@ -1164,9 +1165,9 @@ docker compose logs --tail 100 db
 docker compose exec web python manage.py healthcheck
 ```
 
-   Ожидается «Checks: 11, errors: 0». Частые строки: «не применено миграций: N» (лечится
-   командой `docker compose exec web python manage.py migrate`), «не найдены файлы» (статика:
-   `docker compose exec web python manage.py collectstatic --noinput`), «не собираются шаблоны»
+   Ожидается «Checks: 11, errors: 0». Частые строки: «migrations not applied: N» (лечится
+   командой `docker compose exec web python manage.py migrate`), «files not found» (статика:
+   `docker compose exec web python manage.py collectstatic --noinput`), «templates that fail to load»
    (файлы проекта заменены не полностью — перезалейте версию).
 3. Если в логах «Не задан SECRET_KEY…», «Не задан ALLOWED_HOSTS…» или жалоба на короткий
    `SECRET_KEY` — поправьте `.env` и перезапустите:

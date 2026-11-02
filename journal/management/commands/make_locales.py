@@ -182,14 +182,37 @@ def split_tag_args(contents: str, tag: str) -> str:
     return body.strip()
 
 
+def first_literal(args: str) -> str | None:
+    """Первый строковый литерал в начале аргументов тега перевода.
+
+    После литерала могут идти фильтр (``"Текст"|upper``), признаки ``noop`` и
+    ``context "…"``, а также ``as var``: значение тега от них не зависит,
+    поэтому всё это отбрасывается. Форма ``{% trans "…" as var %}`` кладёт
+    строку в переменную шаблона, но в каталог она попадает так же, как обычная,
+    иначе страницы, собранные через ``as``, оставались бы непереведёнными.
+    """
+    text = args.lstrip()
+    if not text or text[0] not in _QUOTES:
+        return None
+    quote = text[0]
+    index = 1
+    while index < len(text):
+        char = text[index]
+        if char == "\\":
+            index += 2
+            continue
+        if char == quote:
+            return unquote_literal(text[: index + 1])
+        index += 1
+    return None
+
+
 def extract_trans(tag_contents: str, tag: str) -> str | None:
     """Строка из ``{% trans "…" %}`` (в том числе ``as var``, ``noop``, ``context``)."""
     args = split_tag_args(tag_contents, tag)
     if not args:
         return None
-    # Первый аргумент может быть с фильтром: "Текст"|upper.
-    literal = args.split("|", 1)[0]
-    return unquote_literal(literal)
+    return first_literal(args)
 
 
 def blocktrans_options(tag_contents: str, tag: str) -> dict:

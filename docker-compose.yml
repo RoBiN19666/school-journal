@@ -11,7 +11,7 @@ services:
       # Пароль берётся только из .env: известного пароля «по умолчанию» в
       # репозитории нет. Пустое значение — понятная остановка, а не тихий
       # запуск с предсказуемым паролем.
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в файле .env — install.sh создаёт его автоматически, вручную — openssl rand -hex 24}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the .env file — install.sh creates it automatically; for manual setup run: openssl rand -hex 24}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -36,14 +36,14 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-school_journal}
       POSTGRES_USER: ${POSTGRES_USER:-school_journal}
       # Пароль — тот же, что у сервиса db: оба берут его из .env.
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в файле .env — install.sh создаёт его автоматически, вручную — openssl rand -hex 24}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the .env file — install.sh creates it automatically; for manual setup run: openssl rand -hex 24}"
       # Настроек безопасности по умолчанию нет: без своего .env контур не поднимется
       # (compose остановится с понятной ошибкой), а не стартует в отладке с открытыми
       # хостами и известным ключом. Проверки в school_journal/settings.py тоже
       # отвергают пустой или слабый SECRET_KEY и пустой ALLOWED_HOSTS.
-      DEBUG: ${DEBUG:?Задайте DEBUG=0 (бой) или DEBUG=1 (локально) в файле .env}
-      SECRET_KEY: ${SECRET_KEY:?Задайте случайный SECRET_KEY не короче 50 символов в файле .env}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:?Перечислите домены журнала через запятую в ALLOWED_HOSTS (.env)}
+      DEBUG: ${DEBUG:?Set DEBUG=0 for production or DEBUG=1 for local work in the .env file}
+      SECRET_KEY: ${SECRET_KEY:?Set a random SECRET_KEY of at least 50 characters in the .env file}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:?List the journal domains separated by commas in ALLOWED_HOSTS (.env)}
       DEMO_MODE: ${DEMO_MODE:-0}
     ports:
       # Слева — порт на машине (WEB_PORT из .env, по умолчанию 8000),

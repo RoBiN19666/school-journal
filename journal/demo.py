@@ -591,7 +591,8 @@ def mark_demo_session(request, role, created=False):
     request.session["demo_role"] = role
     request.session["demo_is_new"] = created
     # Демонстрация живёт, пока открыт браузер: изменения посетителя не должны
-    # переживать закрытие окна (каждый заходящий работает в своей копии базы).
+    # переживать закрытие окна. Их и не сохраняет middleware — запрос к демо-базе
+    # выполняется в транзакции, которая в конце откатывается (journal/middleware.py).
     request.session.set_expiry(0)
 
 

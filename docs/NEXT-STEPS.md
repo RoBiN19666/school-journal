@@ -1,11 +1,11 @@
-# Что дальше: состояние и незакрытые правки
+﻿# Что дальше: состояние и незакрытые правки
 
 Файл для продолжения работы. Обновлять по мере правок.
 
 ## Текущее состояние
 
-* Версия: **2.31.3** (см. `journal/__init__.py`, историю — `CHANGELOG.md`).
-* Проект рабочий: `manage.py check` без замечаний, миграции согласованы, 11 автотестов
+* Версия: **2.41.1** (см. `journal/__init__.py`, историю — `CHANGELOG.md`).
+* Проект рабочий: `manage.py check` без замечаний, миграции согласованы, 86 автотестов
   зелёные (`python manage.py test journal`), выгрузки открываются, оба языка работают.
 * Перевод интерфейса закончен: 53 шаблона размечены, `.po` заполнен полностью,
   сборка — `python manage.py build_locales` (GNU gettext в окружении нет).
@@ -63,7 +63,7 @@ HTTP 200 на `/export/schedule.png?orientation=vertical|horizontal` в ru и en
 docker compose up -d --build
 docker compose exec web python manage.py migrate
 docker compose exec web python manage.py healthcheck      # ждём «ошибок: 0»
-docker compose exec web python manage.py test journal      # 11 тестов
+docker compose exec web python manage.py test journal      # 86 тестов
 ```
 
 После Ctrl+F5 проверить: выгрузку расписания картинкой в обеих ориентациях,
