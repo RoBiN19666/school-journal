@@ -1,21 +1,22 @@
 #!/bin/sh
 set -e
 
-echo "==> Применяю миграции..."
+echo "==> Applying migrations..."
 python manage.py migrate --noinput
 
-# Демонстрационная база живёт отдельно: в рабочем журнале демо-данных не бывает.
+# The demo database is kept apart: the working journal never holds demo data.
 if [ "${DEMO_MODE:-0}" = "1" ]; then
-    echo "==> Готовлю демонстрационную базу (отдельно от рабочей)..."
-    python manage.py demo_setup || echo "Демо-база не готова — демо-режим будет недоступен."
+    echo "==> Preparing the demo database (separate from the working one)..."
+    python manage.py demo_setup || echo "The demo database is not ready - demo mode will be unavailable."
 fi
 
-echo "==> Собираю статику..."
+echo "==> Collecting static files..."
 python manage.py collectstatic --noinput >/dev/null
 
-echo "==> Запускаю gunicorn на 0.0.0.0:8000"
-# Потоки важны, чтобы медленная выгрузка (PNG/Excel) не блокировала остальные вкладки,
-# а увеличенный timeout — чтобы gunicorn не отвечал "Internal Server Error" на тяжёлый запрос.
+echo "==> Starting gunicorn on 0.0.0.0:8000"
+# Threads matter so that a slow download (PNG/Excel) does not block the other tabs,
+# and the longer timeout keeps gunicorn from answering "Internal Server Error"
+# on a heavy request.
 exec gunicorn school_journal.wsgi:application \
     --bind 0.0.0.0:8000 \
     --workers 3 \

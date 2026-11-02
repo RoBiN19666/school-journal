@@ -484,6 +484,33 @@ def demo_database_counts():
     return counts
 
 
+#: Английские названия строк сводки — для вывода команд ``demo_setup``,
+#: ``clear_demo`` и ``healthcheck``: их читает внешний пользователь, поэтому
+#: строки на английском. Русские названия остаются ключами: они показываются
+#: как есть на странице управления демо-режимом.
+DEMO_COUNT_LABELS_EN = {
+    "Адреса": "branches",
+    "Кабинеты": "rooms",
+    "Ученики": "students",
+    "Программы": "subjects",
+    "Группы": "groups",
+    "Занятия": "lessons",
+    "Разовые занятия": "one-off lessons",
+    "Отметки": "attendance marks",
+    "Темы": "lesson topics",
+    "Конкурсы": "contests",
+    "Педагоги": "teacher development",
+    "Пользователи": "users",
+}
+
+
+def english_labels(counts):
+    """Сводка с английскими названиями строк (порядок и числа сохраняются)."""
+    return {
+        DEMO_COUNT_LABELS_EN.get(label, label): value for label, value in counts.items()
+    }
+
+
 def _busy_branch_ids(alias):
     """Адреса демо-базы, за которыми остались данные: их удалять нельзя."""
     busy = set(Subject.objects.using(alias).values_list("branch_id", flat=True))

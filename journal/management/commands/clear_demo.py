@@ -5,23 +5,23 @@ from journal import demo
 
 
 class Command(BaseCommand):
-    help = "Удаляет демонстрационные данные. Рабочий журнал не затрагивает."
+    help = "Removes demo data. The working journal is not affected."
 
     def handle(self, *args, **options):
         if not demo.demo_database_ready():
-            self.stdout.write("Демонстрационная база недоступна или пуста.")
+            self.stdout.write("The demo database is unavailable or empty.")
             return
-        removed = demo.wipe_demo_data()
+        removed = demo.english_labels(demo.wipe_demo_data())
         self.stdout.write(
             self.style.SUCCESS(
-                "Очищено: "
-                + ", ".join(f"{label} — {count}" for label, count in removed.items() if count)
+                "Removed: "
+                + ", ".join(f"{label}: {count}" for label, count in removed.items() if count)
             )
         )
         left = demo.demo_branches_with_data()
         if left:
             self.stdout.write(
                 self.style.WARNING(
-                    "Не тронуты адреса со связанными данными: " + ", ".join(left)
+                    "Branches with related data left in place: " + ", ".join(left)
                 )
             )

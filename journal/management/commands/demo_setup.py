@@ -96,50 +96,50 @@ def migrate_demo_database():
 
 
 class Command(BaseCommand):
-    help = "Создаёт демонстрационную базу и заполняет её демо-данными."
+    help = "Creates the demo database and fills it with demo data."
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--skip-create",
             action="store_true",
-            help="Не создавать базу (она уже есть).",
+            help="Do not create the database (it already exists).",
         )
         parser.add_argument(
             "--skip-migrate",
             action="store_true",
-            help="Не применять миграции.",
+            help="Do not apply migrations.",
         )
 
     def handle(self, *args, **options):
         alias = demo_router.DEMO_ALIAS
         name = connections[alias].settings_dict.get("NAME")
-        self.stdout.write(f"Демонстрационная база: {alias} → {name}")
+        self.stdout.write(f"Demo database: {alias} → {name}")
 
 
         if not options["skip_create"]:
             where, created = ensure_database_exists()
             if created:
-                self.stdout.write(self.style.SUCCESS(f"База готова ({where})."))
+                self.stdout.write(self.style.SUCCESS(f"Database is ready ({where})."))
             else:
-                self.stdout.write(self.style.WARNING(f"Базу создать не удалось: {where}"))
+                self.stdout.write(self.style.WARNING(f"Could not create the database: {where}"))
                 self.stdout.write(
-                    "Создайте её вручную (CREATE DATABASE) или укажите DEMO_DB_NAME."
+                    "Create it manually (CREATE DATABASE) or set DEMO_DB_NAME."
                 )
                 return
 
         if not options["skip_migrate"]:
-            self.stdout.write("Применяю миграции к демо-базе...")
+            self.stdout.write("Applying migrations to the demo database...")
             migrate_demo_database()
-            self.stdout.write(self.style.SUCCESS("Миграции применены."))
+            self.stdout.write(self.style.SUCCESS("Migrations applied."))
 
         with demo_router.activate():
             created = demo.ensure_demo_data()
         self.stdout.write(
             self.style.SUCCESS(
-                "Демо-данные " + ("созданы." if created else "уже были на месте.")
+                "Demo data " + ("created." if created else "was already in place.")
             )
         )
-        counts = demo.demo_database_counts() or {}
+        counts = demo.english_labels(demo.demo_database_counts() or {})
         for label, value in counts.items():
             self.stdout.write(f"  {label}: {value}")
-        self.stdout.write("Рабочая база не затронута. Вход в демонстрацию: /demo/")
+        self.stdout.write("The working database is untouched. Enter the demo at: /demo/")

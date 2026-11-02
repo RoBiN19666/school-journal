@@ -1,4 +1,4 @@
-﻿[English](README.md) · **[Русский](README.ru.md)**
+﻿<p align="center"><a href="README.md">English</a> &nbsp;·&nbsp; <b>Русский</b></p>
 
 # Электронный журнал посещаемости
 
@@ -10,25 +10,15 @@
 (стили лежат в проекте, сборка Node.js не нужна). Оценок нет — только посещаемость:
 `P` — присутствовал, `A` — отсутствовал, `L` — опоздал.
 
-Текущая версия — **2.40.2** (история изменений — в [CHANGELOG.md](CHANGELOG.md)).
-
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="720" alt="Главная">
+  <img src="docs/screenshots/dashboard.png" width="600" alt="Главная">
   <br>
   <sub><b>Главная</b> · сводка за полугодие</sub>
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/schedule.png" width="540" alt="Расписание">
-  <br>
-  <sub><b>Расписание</b> · сетка по дням</sub>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/weeks.png" width="540" alt="Посещаемость">
-  <br>
-  <sub><b>Посещаемость</b> · недельная таблица отметок</sub>
-</p>
+|  |  |
+|:---:|:---:|
+| <img src="docs/screenshots/schedule.png" width="400" alt="Расписание"><br><sub><b>Расписание</b> · сетка по дням</sub> | <img src="docs/screenshots/weeks.png" width="400" alt="Посещаемость"><br><sub><b>Посещаемость</b> · недельная таблица отметок</sub> |
 
 ![Темы оформления: меню пользователя, плашки и карточка занятия](docs/themes-preview.png)
 
@@ -108,7 +98,7 @@ bash install.sh --no-prompt        # без вопросов: только ин�
 cp .env.example .env
 # откройте .env и заполните SECRET_KEY и POSTGRES_PASSWORD
 docker compose up -d --build
-docker compose exec -T web python manage.py healthcheck   # ждём «ошибок: 0»
+docker compose exec -T web python manage.py healthcheck   # ждём «errors: 0»
 ```
 
 `SECRET_KEY` — случайная строка не короче 50 символов, `POSTGRES_PASSWORD` — пароль
@@ -307,7 +297,7 @@ docker compose up -d --build
 docker compose exec web python manage.py healthcheck
 ```
 
-В конце должно быть «Проверок: 11, ошибок: 0». После обновления нажмите в браузере
+В конце должно быть «Checks: 11, errors: 0». После обновления нажмите в браузере
 **Ctrl+F5**, чтобы он заново скачал стили и скрипты.
 
 > `docker compose down` останавливает журнал, данные сохраняются.
@@ -417,3 +407,9 @@ Copyright (c) 2026 Воробьев И.В.
 ## Автор
 
 Воробьев И.В.
+
+---
+
+## Как разработан
+
+Разработан с использованием **DeepSeek Harness**.

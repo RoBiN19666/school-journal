@@ -1,4 +1,4 @@
-﻿**[English](README.md)** · [Русский](README.ru.md)
+﻿<p align="center"><b>English</b> &nbsp;·&nbsp; <a href="README.ru.md">Русский</a></p>
 
 # Electronic attendance journal
 
@@ -10,25 +10,15 @@ Stack: **Django 5 + PostgreSQL 16 + Docker**, the interface is Django Templates 
 Tailwind CSS (the styles are part of the project, no Node.js build needed). There are no
 grades — attendance only: `P` — present, `A` — absent, `L` — late.
 
-The current version is **2.40.2** (the change history is in [CHANGELOG.md](CHANGELOG.md)).
-
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="720" alt="Dashboard">
+  <img src="docs/screenshots/dashboard.png" width="600" alt="Dashboard">
   <br>
   <sub><b>Dashboard</b> · summary for the term</sub>
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/schedule.png" width="540" alt="Schedule">
-  <br>
-  <sub><b>Schedule</b> · the week grid</sub>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/weeks.png" width="540" alt="Attendance">
-  <br>
-  <sub><b>Attendance</b> · the weekly marks table</sub>
-</p>
+|  |  |
+|:---:|:---:|
+| <img src="docs/screenshots/schedule.png" width="400" alt="Schedule"><br><sub><b>Schedule</b> · the week grid</sub> | <img src="docs/screenshots/weeks.png" width="400" alt="Attendance"><br><sub><b>Attendance</b> · the weekly marks table</sub> |
 
 ![Interface themes: the user menu, badges and a class card](docs/themes-preview.png)
 
@@ -419,3 +409,9 @@ Copyright (c) 2026 Vorobyov I.V.
 ## Author
 
 Vorobyov I.V.
+
+---
+
+## Built with
+
+Developed with **DeepSeek Harness**.

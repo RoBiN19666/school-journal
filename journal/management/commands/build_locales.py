@@ -111,11 +111,11 @@ def locale_directories() -> list[Path]:
 
 
 class Command(BaseCommand):
-    help = "Собирает файлы перевода (.mo) из .po без GNU gettext"
+    help = "Builds translation files (.mo) from .po without GNU gettext"
 
     def add_arguments(self, parser):
         parser.add_argument("--check", action="store_true",
-                            help="только проверить, что собранные файлы читаются")
+                            help="only check that the built files can be read")
 
     def handle(self, *args, **options):
         check_only = options["check"]
@@ -129,14 +129,14 @@ class Command(BaseCommand):
                 mo_path = po_path.with_suffix(".mo")
                 if check_only:
                     if not mo_path.exists():
-                        self.stderr.write(f"нет собранного файла: {mo_path}")
+                        self.stderr.write(f"no compiled file: {mo_path}")
                         broken += 1
                         continue
                 else:
                     text, encoding = read_text(po_path)
                     if encoding != "utf-8":
                         po_path.write_text(text, encoding="utf-8", newline="\n")
-                        self.stdout.write(f"{po_path}: перекодирован из {encoding} в utf-8")
+                        self.stdout.write(f"{po_path}: re-encoded from {encoding} to utf-8")
                     entries = parse_po(po_path)
                     # Пустой перевод в .mo означает пустую строку в интерфейсе,
                     # поэтому в каталог попадают только заполненные строки;
@@ -153,15 +153,15 @@ class Command(BaseCommand):
                         catalog = gettext.GNUTranslations(handle)
                     catalog.gettext("test")
                 except Exception as error:  # noqa: BLE001 - сообщаем и продолжаем
-                    self.stderr.write(f"{mo_path}: файл не читается — {error}")
+                    self.stderr.write(f"{mo_path}: file cannot be read - {error}")
                     broken += 1
                     continue
                 translated = len(catalog._catalog)
                 self.stdout.write(self.style.SUCCESS(
-                    f"{mo_path.relative_to(settings.BASE_DIR)}: строк {translated}"))
+                    f"{mo_path.relative_to(settings.BASE_DIR)}: strings {translated}"))
                 built += 1
         if broken:
-            self.stderr.write(self.style.ERROR(f"проблемных файлов: {broken}"))
+            self.stderr.write(self.style.ERROR(f"files with problems: {broken}"))
             raise SystemExit(1)
         self.stdout.write(self.style.SUCCESS(
-            f"Готово: файлов перевода — {built}" + (" (только проверка)" if check_only else "")))
+            f"Done: translation files - {built}" + (" (check only)" if check_only else "")))
