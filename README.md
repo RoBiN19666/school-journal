@@ -24,8 +24,6 @@ grades — attendance only: `P` — present, `A` — absent, `L` — late.
 </p>
 
 
-![Interface themes: the user menu, badges and a class card](docs/themes-preview.png)
-
 ## Features
 
 * **Academic years and terms** with dates that can be changed; moving programmes, groups
