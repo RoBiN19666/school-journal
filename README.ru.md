@@ -325,6 +325,10 @@ docker compose exec web python manage.py healthcheck
 `healthcheck`. Версия до и после обновления печатается в выводе; подробности — в
 [docs/admin-guide.md](docs/admin-guide.md), раздел 4.
 
+> Локально проект можно сбросить скриптом `bash reset.sh` (Windows:
+> `powershell -ExecutionPolicy Bypass -File .\reset.ps1`): он удаляет базу и загруженные
+> файлы, но оставляет `.env` и снова открывает мастер настройки.
+
 Шаг резервной копии использует команду управления; её же можно запустить вручную:
 
 ```bash

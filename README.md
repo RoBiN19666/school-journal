@@ -328,6 +328,10 @@ The script checks Docker, `docker compose` and git, makes a backup, downloads th
 before and after the update; the details are in
 [docs/admin-guide.md](docs/admin-guide.md), section 4.
 
+> To start over locally, run `bash reset.sh` (Windows:
+> `powershell -ExecutionPolicy Bypass -File .\reset.ps1`): it deletes the database and
+> the uploaded files, keeps `.env`, and opens the setup wizard again.
+
 The backup step uses the management command; the same command can be run by hand:
 
 ```bash
