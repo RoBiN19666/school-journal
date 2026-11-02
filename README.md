@@ -24,7 +24,10 @@ grades — attendance only: `P` — present, `A` — absent, `L` — late.
 </p>
 
 
-## Features
+|  |  |
+|:---:|:---:|
+| <img src="docs/screenshots/schedule.png" width="400" alt="Schedule"><br><sub><b>Schedule</b> · the week grid</sub> | <img src="docs/screenshots/weeks.png" width="400" alt="Attendance"><br><sub><b>Attendance</b> · the weekly marks table</sub> |
+<sub>The screenshots of the schedule and attendance show the Russian interface — the journal is fully bilingual.</sub>## Features
 
 * **Academic years and terms** with dates that can be changed; moving programmes, groups
   and the schedule from the previous term to the new one with a single command in the interface.

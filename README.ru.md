@@ -1,5 +1,12 @@
 ﻿<p align="center"><a href="README.md">English</a> &nbsp;·&nbsp; <b>Русский</b></p>
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
+    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
+  </picture>
+</p>
+
 # Электронный журнал посещаемости
 
 Веб-журнал посещаемости для образовательной организации: ученики, программы, группы
