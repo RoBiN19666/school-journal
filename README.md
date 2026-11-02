@@ -2,8 +2,8 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png">
-    <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
+    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
   </picture>
 </p>
 
@@ -106,8 +106,8 @@ bash install.sh --no-prompt        # no questions: instructions only
 cp .env.example .env
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png">
-    <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
+    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
   </picture>
 </p>
 
@@ -188,8 +188,8 @@ installation again.
 ```bash
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png">
-    <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
+    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
   </picture>
 </p>
 
@@ -198,8 +198,8 @@ sudo apt-get install -y docker.io docker-compose-plugin
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png">
-    <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
+    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
   </picture>
 </p>
 
@@ -208,8 +208,8 @@ sudo dnf install -y docker docker-compose-plugin
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png">
-    <img src="docs/branding/logo-wordmark-dark.png" alt="School Journal" width="420">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/logo-wordmark-light.png?v=2">
+    <img src="docs/branding/logo-wordmark-dark.png?v=2" alt="School Journal" width="420">
   </picture>
 </p>
 
