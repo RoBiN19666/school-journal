@@ -1,4 +1,5 @@
-{% load i18n %}{% comment %}Бейдж логотипа: загруженная картинка или короткий знак.
+{% load static %}
+{% load i18n static %}{% comment %}Бейдж логотипа: загруженная картинка или короткий знак.
 
 Картинка встаёт ВМЕСТО стандартного бейджа: занимает весь его размер и
 переиспользует те же классы скругления, что и у бейджа (передаются в
@@ -6,4 +7,4 @@ logo_radius). Внутренней иконки и двойной рамки н�
 квадрат целиком, поэтому подложка бейджа под картинкой не видна.
 
 Параметры: logo_radius — класс скругления (rounded-xl / rounded-2xl),
-size_class — размеры картинки (по умолчанию на весь бейдж).{% endcomment %}{% if app_logo_url %}<img src="{{ app_logo_url }}" alt="" class="block {{ size_class|default:'h-full w-full' }} {{ logo_radius|default:'rounded-xl' }} object-cover">{% else %}{{ app_short_logo|default:_("ЭЖ") }}{% endif %}
+size_class — размеры картинки (по умолчанию на весь бейдж).{% endcomment %}{% if app_logo_url %}<img src="{{ app_logo_url }}" alt="" class="block {{ size_class|default:'h-full w-full' }} {{ logo_radius|default:'rounded-xl' }} object-contain bg-white p-0.5">{% else %}<img src="{% static 'journal/logo-square.png' %}" alt="" class="block h-full w-full {{ logo_radius|default:'rounded-xl' }} object-cover bg-white p-0.5">{% endif %}

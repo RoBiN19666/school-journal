@@ -7,4 +7,7 @@
     {% trans "Что-то сломалось на сервере" as card_title %}
     {% trans "Ошибка уже записана в журнал. Данные не потеряны: попробуйте обновить страницу через минуту или вернитесь назад и повторите действие." as card_message %}
     {% include "journal/includes/error_card.html" with code="500" title=card_title message=message|default:card_message %}
+      <p class="mx-auto mt-4 max-w-md text-center text-xs leading-relaxed text-slate-400">
+          {% trans "Если ошибка повторяется, передайте администратору время и что вы делали — это поможет найти причину." %}
+      </p>
 {% endblock %}
