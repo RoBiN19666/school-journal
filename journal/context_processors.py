@@ -2,11 +2,33 @@
 from django.conf import settings
 from django.db.utils import OperationalError, ProgrammingError
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from . import __author__, __product__, __version__
 from . import periods as periods_tools
 from . import themes as theme_tools
 from .models import AcademicYear, Branch
+
+#: Название продукта по умолчанию для интерфейса. Тот же текст, что
+#: ``journal.__product__``, но помечен для перевода: значение подставляется
+#: в шаблоны как ``str(...)``, уже на языке запроса. Сам ``__product__``
+#: остаётся неизменным значением пакета — это стабильное имя продукта,
+#: которое не должно зависеть от активного языка.
+DEFAULT_PRODUCT_NAME = _("Электронный журнал")
+
+
+def display_product_name(name):
+    """Название журнала для подвала и заголовка вкладки.
+
+    Пока администратор не переименовал журнал, в настройках стоит значение
+    по умолчанию — ``__product__`` (см. SiteSettings.product_name). Его
+    показываем переводом: иначе в английском интерфейсе подвал и ``<title>``
+    оставались бы русскими. Своё название, заданное администратором,
+    выводится как есть.
+    """
+    if not name or name == __product__:
+        return str(DEFAULT_PRODUCT_NAME)
+    return name
 
 
 #: Адрес исходного кода. Хранится в одном месте: меняется аккаунт или имя
@@ -17,7 +39,7 @@ SOURCE_REPOSITORY_URL = "https://github.com/robin19666/school-journal"
 def product(request):
     """Название продукта, версия и автор — для подвала и страницы «О продукте»."""
     return {
-        "app_product": __product__,
+        "app_product": str(DEFAULT_PRODUCT_NAME),
         "app_version": __version__,
         "app_author": __author__,
         "app_source_url": SOURCE_REPOSITORY_URL,
@@ -105,7 +127,7 @@ def branding(request):
     except Exception:  # таблицы ещё нет — страницы работают со значениями по умолчанию
         return data
     data["app_organization"] = site.organization_name
-    data["app_product"] = site.product_name or "Электронный журнал"
+    data["app_product"] = display_product_name(site.product_name)
     data["app_fund"] = site.organization_name
     data["app_short_logo"] = site.short_logo or "ЭЖ"
     data["app_logo_url"] = site.logo.url if site.logo else ""
