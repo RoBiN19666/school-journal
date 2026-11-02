@@ -23,10 +23,14 @@ grades — attendance only: `P` — present, `A` — absent, `L` — late.
   <sub><b>Dashboard</b> · summary for the term</sub>
 </p>
 
-|  |  |
-|:---:|:---:|
-| <img src="docs/screenshots/schedule.png" width="400" alt="Schedule"><br><sub><b>Schedule</b> · the week grid</sub> | <img src="docs/screenshots/weeks.png" width="400" alt="Attendance"><br><sub><b>Attendance</b> · the weekly marks table</sub> |
-<sub>The screenshots of the schedule and attendance show the Russian interface — the journal is fully bilingual.</sub>
+<table align="center">
+  <tr>
+    <td align="center"><img src="docs/screenshots/schedule.png" width="400" alt="Schedule"><br><sub><b>Schedule</b> · the week grid</sub></td>
+    <td align="center"><img src="docs/screenshots/weeks.png" width="400" alt="Attendance"><br><sub><b>Attendance</b> · the weekly marks table</sub></td>
+  </tr>
+</table>
+
+<p align="center"><sub>The screenshots of the schedule and attendance show the Russian interface — the journal is fully bilingual.</sub></p>
 
 ## Features
 
