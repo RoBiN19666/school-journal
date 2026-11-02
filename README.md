@@ -18,14 +18,11 @@ Tailwind CSS (the styles are part of the project, no Node.js build needed). Ther
 grades — attendance only: `P` — present, `A` — absent, `L` — late.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="600" alt="Dashboard">
+  <img src="docs/screenshots/dashboard-en.png" width="600" alt="Dashboard">
   <br>
   <sub><b>Dashboard</b> · summary for the term</sub>
 </p>
 
-|  |  |
-|:---:|:---:|
-| <img src="docs/screenshots/schedule.png" width="400" alt="Schedule"><br><sub><b>Schedule</b> · the week grid</sub> | <img src="docs/screenshots/weeks.png" width="400" alt="Attendance"><br><sub><b>Attendance</b> · the weekly marks table</sub> |
 
 ![Interface themes: the user menu, badges and a class card](docs/themes-preview.png)
 
