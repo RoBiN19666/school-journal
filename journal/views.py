@@ -4026,6 +4026,12 @@ class DemoWipeView(AdminRequiredMixin, View):
             + ", ".join(f"{label} — {count}" for label, count in removed.items() if count)
             + _(". Рабочий журнал не затронут."),
         )
+        left = demo_tools.demo_branches_with_data()
+        if left:
+            messages.warning(
+                request,
+                _("Не тронуты адреса со связанными данными: ") + ", ".join(left),
+            )
         return redirect("demo_manage")
 
 

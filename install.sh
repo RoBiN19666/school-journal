@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Электронный журнал посещаемости — установка одной командой
+#  Electronic attendance journal — one-command installation
 # =============================================================================
-#  Скрипт для Linux и macOS (для Windows — install.ps1).
+#  Script for Linux and macOS (for Windows use install.ps1).
 #
-#  Что делает:
-#    1. проверяет, что есть Docker и docker compose; если Docker нет —
-#       на Linux предлагает установить его (Ubuntu 22.04/24.04 и производные,
-#       Debian 11/12, Fedora/RHEL/AlmaLinux/Rocky 9+), а на macOS и Windows
-#       ничего не ставит и даёт инструкцию вручную: Docker Desktop — это
-#       отдельное приложение с графическим мастером и платной лицензией
-#       для крупных организаций;
-#    2. создаёт .env из .env.example (если .env ещё нет) со случайными
-#       SECRET_KEY и POSTGRES_PASSWORD и рабочими настройками по умолчанию;
-#    3. собирает и запускает контейнеры: docker compose up -d --build;
-#    4. ждёт, пока журнал ответит на самопроверку (manage.py healthcheck);
-#    5. печатает адрес журнала и что делать при первом открытии.
+#  What it does:
+#    1. checks that Docker and docker compose are available; if Docker is
+#       missing, on Linux it offers to install it (Ubuntu 22.04/24.04 and
+#       derivatives, Debian 11/12, Fedora/RHEL/AlmaLinux/Rocky 9+), while on
+#       macOS and Windows it installs nothing and gives manual instructions:
+#       Docker Desktop is a separate application with a graphical wizard and a
+#       paid licence for large organisations;
+#    2. creates .env from .env.example (if .env does not exist yet) with random
+#       SECRET_KEY and POSTGRES_PASSWORD and working default settings;
+#    3. builds and starts the containers: docker compose up -d --build;
+#    4. waits until the journal answers its self-check (manage.py healthcheck);
+#    5. prints the journal address and what to do on first opening.
 #
-#  Запуск:
+#  Usage:
 #      bash install.sh
-#      bash install.sh --install-docker   согласие на установку Docker (Linux)
-#      bash install.sh --no-prompt        без вопросов: только инструкции
+#      bash install.sh --install-docker   agree to install Docker (Linux)
+#      bash install.sh --no-prompt        no questions: instructions only
 #
-#  Повторный запуск безопасен: существующий .env не переписывается, секреты
-#  не пересоздаются, данные в томах не трогаются — выполняется только сборка
-#  и запуск. Это же используется для обновления версии.
+#  Re-running is safe: an existing .env is not overwritten, secrets are not
+#  regenerated, data in the volumes is left alone — only the build and the
+#  start are performed. The same script is used to update to a new version.
 # =============================================================================
 set -euo pipefail
 
-# --- Пути и параметры ---------------------------------------------------------
+# --- Paths and parameters -----------------------------------------------------
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 cd "$SCRIPT_DIR"
@@ -36,18 +36,19 @@ cd "$SCRIPT_DIR"
 ENV_FILE=".env"
 ENV_TEMPLATE=".env.example"
 SERVICE="web"
-#: Сколько секунд ждать готовности журнала (можно переопределить в окружении).
+#: How many seconds to wait for the journal to become ready (can be overridden
+#: in the environment).
 HEALTH_TIMEOUT=${HEALTH_TIMEOUT:-300}
-#: Пауза между проверками готовности, секунд.
+#: Pause between readiness checks, seconds.
 HEALTH_INTERVAL=${HEALTH_INTERVAL:-4}
-#: Согласие на установку Docker без вопроса (флаг --install-docker).
+#: Agree to install Docker without asking (the --install-docker flag).
 INSTALL_DOCKER=0
-#: Никаких вопросов, только инструкции (флаг --no-prompt).
+#: No questions at all, instructions only (the --no-prompt flag).
 NO_PROMPT=0
-#: Файл с описанием дистрибутива (Linux). Можно переопределить — нужно для тестов.
+#: File describing the distribution (Linux). Can be overridden — needed for tests.
 OS_RELEASE_FILE=${OS_RELEASE_FILE:-/etc/os-release}
 
-# --- Оформление вывода --------------------------------------------------------
+# --- Output formatting --------------------------------------------------------
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
     BOLD=$(printf '\033[1m')
@@ -66,45 +67,47 @@ ok() { printf '%s  [OK]%s %s\n' "$GREEN" "$RESET" "$*"; }
 note() { printf '%s       %s%s\n' "$DIM" "$*" "$RESET"; }
 warn() { printf '%s  [!]%s %s\n' "$YELLOW" "$RESET" "$*" >&2; }
 die() {
-    printf '\n%s  [ОШИБКА]%s %s\n\n' "$RED" "$*" "$RESET" >&2
+    printf '\n%s  [ERROR]%s %s\n\n' "$RED" "$*" "$RESET" >&2
     exit 1
 }
 
-# Любая неожиданная ошибка — с номером строки, чтобы отчёт было о чём приложить.
-trap 'printf "\n%s  [ОШИБКА]%s Команда завершилась с ошибкой (строка %s).%s\n\n" "$RED" "$LINENO" "$RESET" >&2' ERR
+# Any unexpected error — with the line number, so there is something to attach
+# to a report.
+trap 'printf "\n%s  [ERROR]%s A command failed (line %s).%s\n\n" "$RED" "$LINENO" "$RESET" >&2' ERR
 
 usage() {
     cat <<'TEXT'
-Установка электронного журнала посещаемости (Django + PostgreSQL + Docker).
+Installing the electronic attendance journal (Django + PostgreSQL + Docker).
 
-Использование:
-    bash install.sh                    установить или обновить журнал
-    bash install.sh --install-docker   согласие на установку Docker без вопроса
-                                       (только Linux, только поддерживаемые
-                                       дистрибутивы; работает и без терминала —
-                                       для автоматизации)
-    bash install.sh --no-prompt        без вопросов: только инструкции
-    bash install.sh --help             эта справка
+Usage:
+    bash install.sh                    install or update the journal
+    bash install.sh --install-docker   agree to install Docker without asking
+                                       (Linux only, supported distributions
+                                       only; also works without a terminal —
+                                       for automation)
+    bash install.sh --no-prompt        no questions: instructions only
+    bash install.sh --help             this help
 
-Без Docker журнал не запустить. На Linux скрипт проверяет дистрибутив
-по /etc/os-release и, если система поддерживается, спрашивает
-«Установить сейчас? [y/N]» — по умолчанию ответ НЕТ (просто Enter).
-В неинтерактивном окружении (нет терминала) вопрос не задаётся: скрипт
-печатает команды для установки вручную и выходит с кодом 1.
+The journal cannot run without Docker. On Linux the script checks the
+distribution in /etc/os-release and, if the system is supported, asks
+"Install Docker now? [y/N]" — the default answer is NO (just press Enter).
+In a non-interactive environment (no terminal) the question is not asked:
+the script prints the commands for a manual installation and exits with
+code 1.
 
-На macOS и Windows автоматической установки нет: Docker Desktop ставится
-вручную. Это большое приложение с графическим мастером, после установки
-требуется его запустить, а лицензия Docker Desktop для крупных организаций
-платная — решение об установке должно остаться за человеком. Скрипт покажет
-официальную страницу загрузки и предупреждение про лицензию.
+On macOS and Windows there is no automatic installation: Docker Desktop is
+installed by hand. It is a large application with a graphical wizard, it has
+to be started after installation, and the Docker Desktop licence for large
+organisations is paid — the decision to install must stay with a human. The
+script shows the official download page and a warning about the licence.
 
-Переменные окружения:
-    HEALTH_TIMEOUT=600                 сколько секунд ждать готовности (по умолчанию 300)
-    NO_COLOR=1                         без цвета в выводе
+Environment variables:
+    HEALTH_TIMEOUT=600                 how many seconds to wait for readiness (default 300)
+    NO_COLOR=1                         no colour in the output
 
-Скрипт создаёт .env (если его нет), собирает контейнеры и ждёт, пока журнал
-ответит на самопроверку. Повторный запуск безопасен: настройки и данные
-не перезаписываются.
+The script creates .env (if it does not exist), builds the containers and waits
+until the journal answers its self-check. Re-running is safe: settings and data
+are not overwritten.
 TEXT
 }
 
@@ -118,15 +121,15 @@ while [ "$#" -gt 0 ]; do
         --no-prompt) NO_PROMPT=1 ;;
         *)
             usage >&2
-            die "Неизвестный аргумент: $1"
+            die "Unknown argument: $1"
             ;;
     esac
     shift
 done
 
-# --- Вспомогательные функции --------------------------------------------------
+# --- Helper functions ---------------------------------------------------------
 
-#: Читает значение переменной из .env (без кавычек и без комментариев).
+#: Reads a variable value from .env (without quotes and without comments).
 env_value() {
     awk -v key="$1" '
         index($0, key "=") == 1 {
@@ -136,7 +139,7 @@ env_value() {
     ' "$ENV_FILE"
 }
 
-#: Записывает KEY=VALUE в .env: заменяет существующую строку или добавляет новую.
+#: Writes KEY=VALUE to .env: replaces the existing line or adds a new one.
 set_env() {
     key=$1
     value=$2
@@ -149,9 +152,9 @@ set_env() {
     mv "$tmp" "$ENV_FILE"
 }
 
-#: Случайная строка из латиницы и цифр длиной $1: для ключей и паролей.
-#: Пробует по очереди openssl, python3 и /dev/urandom — первый, кто дал строку
-#: нужной длины, и выигрывает (python3 бывает заглушкой из Microsoft Store).
+#: Random string of Latin letters and digits, length $1: for keys and passwords.
+#: Tries openssl, python3 and /dev/urandom in turn — the first one that returns
+#: a string of the required length wins (python3 may be a Microsoft Store stub).
 random_string() {
     length=$1
     value=''
@@ -169,7 +172,7 @@ print("".join(secrets.choice(alphabet) for _ in range(int(sys.argv[1]))))' "$len
     printf '%s' "$value"
 }
 
-#: Обёртка над «docker compose» / старым «docker-compose».
+#: Wrapper around "docker compose" / the older "docker-compose".
 compose() {
     if [ "$COMPOSE_KIND" = "v1" ]; then
         docker-compose "$@"
@@ -178,11 +181,11 @@ compose() {
     fi
 }
 
-# --- Если Docker не установлен ------------------------------------------------
+# --- When Docker is not installed ---------------------------------------------
 
-#: Значение ключа из файла описания дистрибутива (/etc/os-release).
-#: Кавычки вокруг значения снимаются, как в самом файле.
-#: Путь можно переопределить переменной OS_RELEASE_FILE (нужно для тестов).
+#: Value of a key from the distribution description file (/etc/os-release).
+#: Quotes around the value are stripped, as the file itself does.
+#: The path can be overridden with OS_RELEASE_FILE (needed for tests).
 os_release_value() {
     key=$1
     [ -r "$OS_RELEASE_FILE" ] || return 0
@@ -196,7 +199,7 @@ os_release_value() {
     ' "$OS_RELEASE_FILE"
 }
 
-#: Платформа: linux, macos, windows (bash в Windows) или unknown.
+#: Platform: linux, macos, windows (bash on Windows) or unknown.
 detect_os() {
     kernel=$(uname -s 2>/dev/null || printf 'unknown')
     case "$kernel" in
@@ -207,7 +210,7 @@ detect_os() {
     esac
 }
 
-#: Читает описание дистрибутива в переменные DISTRO_*.
+#: Reads the distribution description into the DISTRO_* variables.
 read_linux_distro() {
     DISTRO_ID=$(os_release_value ID | tr 'A-Z' 'a-z')
     DISTRO_LIKE=$(os_release_value ID_LIKE | tr 'A-Z' 'a-z')
@@ -218,7 +221,7 @@ read_linux_distro() {
     DISTRO_MAJOR=${DISTRO_VERSION%%.*}
 }
 
-#: Семейство дистрибутива: ubuntu, debian, fedora или other.
+#: Distribution family: ubuntu, debian, fedora or other.
 linux_family() {
     case " $DISTRO_ID $DISTRO_LIKE " in
         *" ubuntu "*) printf 'ubuntu' ;;
@@ -228,8 +231,8 @@ linux_family() {
     esac
 }
 
-#: Есть ли смысл ставить Docker автоматически на этой системе.
-#: Ubuntu 22.04/24.04 и производные, Debian 11/12, Fedora/RHEL/Alma/Rocky 9+.
+#: Whether installing Docker automatically makes sense on this system.
+#: Ubuntu 22.04/24.04 and derivatives, Debian 11/12, Fedora/RHEL/Alma/Rocky 9+.
 linux_supported() {
     family=$1
     case "$family" in
@@ -261,7 +264,7 @@ linux_supported() {
     esac
 }
 
-#: Строка «Система: Ubuntu 24.04.1 LTS (ubuntu, jammy 24.04)».
+#: Line "System: Ubuntu 24.04.1 LTS (ubuntu, jammy 24.04)".
 describe_linux() {
     distro_info="$DISTRO_ID"
     if [ -n "$DISTRO_CODENAME" ]; then
@@ -270,29 +273,29 @@ describe_linux() {
     if [ -n "$DISTRO_VERSION" ]; then
         distro_info="$distro_info $DISTRO_VERSION"
     fi
-    say "Система: ${DISTRO_PRETTY:-$DISTRO_ID} ($distro_info)"
+    say "System: ${DISTRO_PRETTY:-$DISTRO_ID} ($distro_info)"
 }
 
-#: Подсказка для поддерживаемой системы, если пользователь отказался.
+#: Hint for a supported system when the user declined.
 print_linux_install_hint() {
     say ""
-    say "${BOLD}Установите Docker самостоятельно:${RESET}"
+    say "${BOLD}Install Docker yourself:${RESET}"
     say "  curl -fsSL https://get.docker.com | sudo sh"
     say "  sudo usermod -aG docker \$USER"
-    say "  newgrp docker        # или выйдите и войдите снова"
+    say "  newgrp docker        # or log out and log in again"
     say "  bash install.sh"
     say ""
-    say "  Подробно по дистрибутивам: https://docs.docker.com/engine/install/"
+    say "  Details per distribution: https://docs.docker.com/engine/install/"
 }
 
-#: Система не в матрице поддерживаемых: ставить не будем, дадим команды.
+#: The system is not in the supported matrix: we install nothing, we give commands.
 print_unsupported_linux() {
     say ""
-    say "Ваша система ($DISTRO_ID ${DISTRO_VERSION:-без версии}) не в списке"
-    say "поддерживаемых для автоматической установки — ставить Docker сам не буду,"
-    say "чтобы не сломать систему."
+    say "Your system ($DISTRO_ID ${DISTRO_VERSION:-no version}) is not on the list"
+    say "of systems supported for automatic installation — I will not install Docker"
+    say "myself, so as not to break the system."
     say ""
-    say "${BOLD}Поставьте Docker вручную:${RESET}"
+    say "${BOLD}Install Docker manually:${RESET}"
     case "$DISTRO_ID" in
         arch* | manjaro* | endeavouros*)
             say "  sudo pacman -S docker docker-compose"
@@ -304,67 +307,67 @@ print_unsupported_linux() {
             say "  sudo apk add docker docker-cli-compose"
             ;;
         *)
-            say "  Установите docker-ce и плагин compose пакетным менеджером системы."
+            say "  Install docker-ce and the compose plugin with the system package manager."
             ;;
     esac
-    say "  Инструкция: https://docs.docker.com/engine/install/"
-    say "  Затем запустите: bash install.sh"
+    say "  Instructions: https://docs.docker.com/engine/install/"
+    say "  Then run: bash install.sh"
 }
 
-#: macOS: установку не предлагаем и ничего не запускаем.
+#: macOS: we do not offer an installation and start nothing.
 print_macos_message() {
     cat <<'TEXT'
 
-Docker Desktop для macOS ставится вручную: это большое приложение
-с графическим мастером, после установки его нужно запустить, а иногда
-и перезагрузить систему. Кроме того, лицензия Docker Desktop для крупных
-организаций платная — решение об установке должно остаться за вами.
-Сам я его не ставлю и ничего не скачиваю.
+Docker Desktop for macOS is installed by hand: it is a large application
+with a graphical wizard, it has to be started after installation, and
+sometimes the system has to be rebooted as well. Besides, the Docker Desktop
+licence for large organisations is paid — the decision to install must be
+yours. I do not install it and I do not download anything.
 TEXT
     say ""
-    say "  Страница загрузки: https://www.docker.com/products/docker-desktop/"
-    say "  Установка на macOS: https://docs.docker.com/desktop/install/mac-install/"
+    say "  Download page: https://www.docker.com/products/docker-desktop/"
+    say "  Installing on macOS: https://docs.docker.com/desktop/install/mac-install/"
     say ""
-    say "После установки запустите Docker Desktop и повторите: bash install.sh"
+    say "After installation start Docker Desktop and run again: bash install.sh"
 }
 
-#: Windows: установку не предлагаем и ничего не запускаем.
+#: Windows: we do not offer an installation and start nothing.
 print_windows_message() {
     cat <<'TEXT'
 
-Похоже, это bash на Windows. Docker Desktop для Windows ставится вручную:
-это большое приложение с графическим мастером, после установки требуется
-перезагрузка, а лицензия Docker Desktop для крупных организаций платная.
-Сам я его не ставлю и ничего не скачиваю.
+This looks like bash on Windows. Docker Desktop for Windows is installed by
+hand: it is a large application with a graphical wizard, a reboot is required
+after installation, and the Docker Desktop licence for large organisations is
+paid. I do not install it and I do not download anything.
 TEXT
     say ""
-    say "  Страница загрузки: https://www.docker.com/products/docker-desktop/"
-    say "  Установка на Windows: https://docs.docker.com/desktop/install/windows-install/"
+    say "  Download page: https://www.docker.com/products/docker-desktop/"
+    say "  Installing on Windows: https://docs.docker.com/desktop/install/windows-install/"
     say ""
-    say "Установщик журнала для PowerShell тоже не ставит Docker сам:"
+    say "The journal installer for PowerShell does not install Docker by itself either:"
     say "  powershell -ExecutionPolicy Bypass -File .\\install.ps1"
     say ""
-    say "После установки Docker Desktop запустите установку снова."
+    say "After installing Docker Desktop, run the installation again."
 }
 
 print_generic_message() {
     say ""
-    say "Не удалось определить систему. Поставьте Docker вручную:"
+    say "Could not detect the system. Install Docker manually:"
     say "  https://docs.docker.com/engine/install/"
     say "  https://www.docker.com/products/docker-desktop/"
     say ""
-    say "После установки повторите: bash install.sh"
+    say "After installation run again: bash install.sh"
 }
 
-#: Linux: официальный установщик get.docker.com, затем группа docker.
+#: Linux: the official get.docker.com installer, then the docker group.
 install_docker_linux() {
     say ""
 
     if ! command -v curl >/dev/null 2>&1; then
-        die "Для установки нужен curl.
+        die "curl is required for the installation.
   Debian/Ubuntu:  sudo apt-get install -y curl
   Fedora/RHEL:    sudo dnf install -y curl
-  Потом повторите: bash install.sh"
+  Then run again: bash install.sh"
     fi
 
     if command -v id >/dev/null 2>&1 && [ "$(id -u 2>/dev/null || echo 1)" = "0" ]; then
@@ -372,63 +375,63 @@ install_docker_linux() {
     elif command -v sudo >/dev/null 2>&1; then
         SUDO=sudo
     else
-        die "Нужны права root или установленный sudo.
-  Запустите скрипт от root:  su -c 'bash install.sh'"
+        die "Root rights or an installed sudo are required.
+  Run the script as root:  su -c 'bash install.sh'"
     fi
 
     script_path="${TMPDIR:-/tmp}/get-docker.$$.sh"
-    say "Выполняю: curl -fsSL https://get.docker.com -o $script_path"
+    say "Running: curl -fsSL https://get.docker.com -o $script_path"
     if ! curl -fsSL https://get.docker.com -o "$script_path"; then
         rm -f "$script_path"
-        die "Не удалось скачать установщик Docker с https://get.docker.com.
-  Проверьте интернет и повторите, либо поставьте Docker вручную:
+        die "Could not download the Docker installer from https://get.docker.com.
+  Check the internet connection and try again, or install Docker manually:
     https://docs.docker.com/engine/install/"
     fi
     if [ ! -s "$script_path" ]; then
         rm -f "$script_path"
-        die "Установщик Docker скачался пустым. Поставьте Docker вручную: https://docs.docker.com/engine/install/"
+        die "The Docker installer was downloaded empty. Install Docker manually: https://docs.docker.com/engine/install/"
     fi
 
-    say "Выполняю: $SUDO sh $script_path"
+    say "Running: $SUDO sh $script_path"
     if ! $SUDO sh "$script_path"; then
         rm -f "$script_path"
-        die "Установщик Docker завершился с ошибкой (сообщения выше).
-  Поставьте Docker вручную: https://docs.docker.com/engine/install/"
+        die "The Docker installer failed (messages above).
+  Install Docker manually: https://docs.docker.com/engine/install/"
     fi
     rm -f "$script_path"
 
     current_user=${USER:-$(id -un 2>/dev/null || echo user)}
-    say "Выполняю: $SUDO usermod -aG docker $current_user"
+    say "Running: $SUDO usermod -aG docker $current_user"
     if ! $SUDO usermod -aG docker "$current_user"; then
-        warn "Не удалось добавить $current_user в группу docker — запускайте docker через sudo."
+        warn "Could not add $current_user to the docker group — run docker through sudo."
     fi
 
     cat <<TEXT
 
-Docker установлен. Чтобы журнал заработал, осталось два шага:
+Docker is installed. Two steps are left before the journal can start:
 
-  1. Перезайдите в систему (или выполните  newgrp docker ) — иначе docker
-     не пустит вас без sudo: новая группа действует только в новой сессии.
-  2. Запустите установку заново:  bash install.sh
+  1. Log out and log in again (or run  newgrp docker ) — otherwise docker will
+     not let you in without sudo: the new group only applies to a new session.
+  2. Run the installation again:  bash install.sh
 
-Проверить, что Docker работает:  docker run --rm hello-world
+Check that Docker works:  docker run --rm hello-world
 TEXT
     exit 0
 }
 
-#: Единая обработка «Docker не найден» / «нет docker compose».
-#: $1 — чего не хватает: "docker" или "docker compose".
+#: Single handling of "Docker not found" / "docker compose missing".
+#: $1 — what is missing: "docker" or "docker compose".
 handle_missing_docker() {
     missing=$1
     os=$(detect_os)
 
     say ""
     if [ "$missing" = "docker" ]; then
-        warn "Docker не найден."
-        say "Он нужен, чтобы запустить журнал в контейнерах: PostgreSQL и само приложение."
+        warn "Docker not found."
+        say "It is required to run the journal in containers: PostgreSQL and the application itself."
     else
-        warn "Docker найден, но нет «docker compose»."
-        say "Плагин compose нужен, чтобы одной командой поднять базу и приложение."
+        warn 'Docker is installed, but there is no "docker compose".'
+        say "The compose plugin is required to bring up the database and the application with one command."
     fi
 
     case "$os" in
@@ -450,7 +453,7 @@ handle_missing_docker() {
     esac
 }
 
-#: Linux: решаем по /etc/os-release, можно ли ставить Docker автоматически.
+#: Linux: decide from /etc/os-release whether Docker can be installed automatically.
 handle_missing_docker_linux() {
     read_linux_distro
     family=$(linux_family)
@@ -462,34 +465,34 @@ handle_missing_docker_linux() {
         exit 1
     fi
 
-    say "Буду ставить Docker официальным скриптом get.docker.com."
+    say "Installing Docker with the official get.docker.com script."
 
     if [ "$NO_PROMPT" -eq 1 ]; then
         say ""
-        say "Флаг --no-prompt: вопросов не задаю, ничего не устанавливаю."
+        say "Flag --no-prompt: not asking questions, installing nothing."
         print_linux_install_hint
         exit 1
     fi
 
     if [ "$INSTALL_DOCKER" -eq 1 ]; then
-        say "Флаг --install-docker: ставлю Docker без вопроса."
+        say "Flag --install-docker: installing Docker without asking."
     else
         if [ ! -t 0 ]; then
             say ""
-            say "Ввод недоступен (нет терминала): вопрос не задаю, ничего не устанавливаю."
-            say "Для автоматической установки запустите с флагом --install-docker."
+            say "No input available (no terminal): not asking questions, installing nothing."
+            say "To install automatically, run with the --install-docker flag."
             print_linux_install_hint
             exit 1
         fi
 
-        printf '\n%sУстановить сейчас?%s [y/N] ' "$BOLD" "$RESET"
+        printf '\n%sInstall Docker now?%s [y/N] ' "$BOLD" "$RESET"
         answer=''
         IFS= read -r answer || answer=''
         case "$answer" in
-            y | Y | yes | YES | Yes | д | да | Да | Д) ;;
+            y | Y | yes | YES | Yes) ;;
             *)
                 say ""
-                say "Установка отменена — на этой машине ничего не изменено."
+                say "Installation cancelled — nothing on this machine was changed."
                 print_linux_install_hint
                 exit 1
                 ;;
@@ -499,48 +502,48 @@ handle_missing_docker_linux() {
     install_docker_linux
 }
 
-# --- Начало -------------------------------------------------------------------
+# --- Start --------------------------------------------------------------------
 
-printf '\n%sЭлектронный журнал посещаемости — установка%s\n' "$BOLD" "$RESET"
-printf '%sDjango 5 + PostgreSQL + Docker · каталог: %s%s\n' "$DIM" "$SCRIPT_DIR" "$RESET"
+printf '\n%sElectronic attendance journal — installation%s\n' "$BOLD" "$RESET"
+printf '%sDjango 5 + PostgreSQL + Docker · directory: %s%s\n' "$DIM" "$SCRIPT_DIR" "$RESET"
 
-# --- 1. Docker и docker compose ----------------------------------------------
+# --- 1. Docker and docker compose ---------------------------------------------
 
-step "Проверяю Docker"
+step "Checking Docker"
 
 if ! command -v docker >/dev/null 2>&1; then
     handle_missing_docker "docker"
 fi
 
 if ! docker info >/dev/null 2>&1; then
-    die "Docker установлен, но его служба не отвечает.
-  Запустите Docker Desktop (или: sudo systemctl start docker) и повторите запуск.
-  Проверить самому: docker info"
+    die "Docker is installed, but its service is not responding.
+  Start Docker Desktop (or: sudo systemctl start docker) and run the installation again.
+  Check it yourself: docker info"
 fi
-ok "Docker: $(docker --version 2>/dev/null || echo 'есть')"
+ok "Docker: $(docker --version 2>/dev/null || echo 'available')"
 
 COMPOSE_KIND="v2"
 if docker compose version >/dev/null 2>&1; then
     COMPOSE_KIND="v2"
-    ok "docker compose: $(docker compose version --short 2>/dev/null || echo 'есть')"
+    ok "docker compose: $(docker compose version --short 2>/dev/null || echo 'available')"
 elif command -v docker-compose >/dev/null 2>&1; then
     COMPOSE_KIND="v1"
-    warn "Найден устаревший docker-compose (v1). Работать будет, но лучше поставить docker compose v2."
-    ok "docker-compose: $(docker-compose --version 2>/dev/null || echo 'есть')"
+    warn "An outdated docker-compose (v1) was found. It works, but it is better to install docker compose v2."
+    ok "docker-compose: $(docker-compose --version 2>/dev/null || echo 'available')"
 else
     handle_missing_docker "docker compose"
 fi
 
-# --- 2. Файл .env -------------------------------------------------------------
+# --- 2. The .env file ---------------------------------------------------------
 
-step "Готовлю настройки (.env)"
+step "Preparing settings (.env)"
 
 if [ -f "$ENV_FILE" ]; then
-    ok "Файл .env уже есть — оставляю как есть."
-    note "Секреты и настройки не пересоздаются: повторный запуск их не меняет."
+    ok "The .env file already exists — leaving it as it is."
+    note "Secrets and settings are not recreated: re-running does not change them."
 else
     if [ ! -f "$ENV_TEMPLATE" ]; then
-        die "Нет файла $ENV_TEMPLATE — скачайте проект целиком (в нём лежит шаблон настроек)."
+        die "The file $ENV_TEMPLATE is missing — download the project in full (the settings template is part of it)."
     fi
     cp "$ENV_TEMPLATE" "$ENV_FILE"
     chmod 600 "$ENV_FILE" 2>/dev/null || true
@@ -554,17 +557,18 @@ else
     set_env ALLOWED_HOSTS "localhost,127.0.0.1"
     set_env DJANGO_LANGUAGE_CODE "ru"
 
-    # На всякий случай: без ключа нужной длины журнал не стартует.
+    # Just in case: without a key of the required length the journal will not start.
     if [ "${#secret_key}" -lt 50 ] || [ "${#db_password}" -lt 16 ]; then
         rm -f "$ENV_FILE"
-        die "Не удалось сгенерировать случайные значения (нет openssl, python3 и /dev/urandom).
-  Создайте .env вручную из .env.example и заполните SECRET_KEY и POSTGRES_PASSWORD."
+        die "Could not generate random values (no openssl, python3 or /dev/urandom).
+  Create .env manually from .env.example and fill in SECRET_KEY and POSTGRES_PASSWORD."
     fi
-    ok "Файл .env создан из $ENV_TEMPLATE."
-    note "SECRET_KEY и POSTGRES_PASSWORD сгенерированы случайно и сохранены только в .env."
+    ok "The .env file has been created from $ENV_TEMPLATE."
+    note "SECRET_KEY and POSTGRES_PASSWORD were generated randomly and are stored only in .env."
 fi
 
-# Обязательные значения: без них контейнеры не поднимутся, лучше сказать сразу.
+# Required values: without them the containers will not come up, better to say it
+# right away.
 missing=""
 secret_key=$(env_value SECRET_KEY)
 db_password=$(env_value POSTGRES_PASSWORD)
@@ -576,43 +580,43 @@ allowed_hosts=$(env_value ALLOWED_HOSTS)
 [ -n "$debug" ] || missing="$missing DEBUG"
 [ -n "$allowed_hosts" ] || missing="$missing ALLOWED_HOSTS"
 if [ -n "$missing" ]; then
-    die "В файле .env не заданы:$missing
-  Откройте .env и заполните их (подсказки — в .env.example) или удалите .env
-  и запустите install.sh снова: он создаст файл со случайными секретами."
+    die "The .env file does not set:$missing
+  Open .env and fill them in (hints are in .env.example) or delete .env
+  and run install.sh again: it will create the file with random secrets."
 fi
 if [ "${#secret_key}" -lt 50 ]; then
-    die "SECRET_KEY в .env короче 50 символов — журнал так не запустится.
-  Сгенерируйте новый ключ: openssl rand -base64 64 | tr -dc 'A-Za-z0-9' | cut -c1-64
-  Внимание: со сменой SECRET_KEY все пользователи выйдут из журнала."
+    die "SECRET_KEY in .env is shorter than 50 characters — the journal will not start like that.
+  Generate a new key: openssl rand -base64 64 | tr -dc 'A-Za-z0-9' | cut -c1-64
+  Note: changing SECRET_KEY signs all users out of the journal."
 fi
-ok "Обязательные настройки на месте (DEBUG=$debug, ALLOWED_HOSTS=$allowed_hosts)."
+ok "Required settings are in place (DEBUG=$debug, ALLOWED_HOSTS=$allowed_hosts)."
 
-# --- 3. Конфигурация compose -------------------------------------------------
+# --- 3. Compose configuration -------------------------------------------------
 
-step "Проверяю конфигурацию"
+step "Checking the configuration"
 
 if ! compose config -q; then
-    die "docker compose не принял конфигурацию (сообщение выше).
-  Обычно это незаполненная или неверная переменная в .env — сравните её с .env.example."
+    die "docker compose rejected the configuration (message above).
+  This is usually an unset or wrong variable in .env — compare it with .env.example."
 fi
-ok "Конфигурация верная."
+ok "The configuration is valid."
 
-# --- 4. Сборка и запуск ------------------------------------------------------
+# --- 4. Build and start -------------------------------------------------------
 
-step "Собираю и запускаю контейнеры"
-note "Первая сборка занимает несколько минут: скачиваются образы и ставятся библиотеки."
+step "Building and starting containers"
+note "The first build takes a few minutes: images are downloaded and libraries are installed."
 if ! compose up -d --build; then
-    die "Контейнеры не запустились.
-  Посмотрите причину: docker compose logs --tail=100 $SERVICE
-  Частые случаи (нет зеркала Docker Hub, занят порт 8000) разобраны в README,
-  раздел «Если что-то пошло не так»."
+    die "The containers did not start.
+  Look at the reason: docker compose logs --tail=100 $SERVICE
+  Common cases (no Docker Hub mirror, port 8000 already in use) are covered in
+  the README, section 'If something went wrong'."
 fi
-ok "Контейнеры запущены (db и $SERVICE)."
+ok "Containers are running (db and $SERVICE)."
 
-# --- 5. Ожидание готовности --------------------------------------------------
+# --- 5. Waiting for readiness -------------------------------------------------
 
-step "Жду готовности журнала"
-note "Самопроверка каждые ${HEALTH_INTERVAL} с, максимум ${HEALTH_TIMEOUT} с."
+step "Waiting for the journal to become ready"
+note "Self-check every ${HEALTH_INTERVAL} s, ${HEALTH_TIMEOUT} s maximum."
 
 started=$(date +%s)
 not_running=0
@@ -624,7 +628,7 @@ while [ "$ready" -eq 0 ]; do
     fi
 
     case "$output" in
-        *"is not running"* | *"not running"* | *"не запущен"*)
+        *"is not running"* | *"not running"*)
             not_running=$((not_running + 1))
             ;;
         *)
@@ -633,32 +637,33 @@ while [ "$ready" -eq 0 ]; do
     esac
     if [ "$not_running" -ge 3 ]; then
         printf '\n'
-        warn "Контейнер $SERVICE не работает — журнал не поднимется."
+        warn "Container $SERVICE is not running — the journal will not come up."
         compose logs --tail=40 "$SERVICE" || true
-        die "Журнал не запустился.
-  Смотрите полные логи: docker compose logs $SERVICE
-  Причину чаще всего видно в первых строках после «==> Применяю миграции…»."
+        die "The journal did not start.
+  See the full logs: docker compose logs $SERVICE
+  The cause is usually visible in the first lines of the container log — the
+  migration step and the start of the application."
     fi
 
     now=$(date +%s)
     if [ $((now - started)) -ge "$HEALTH_TIMEOUT" ]; then
         printf '\n'
-        warn "Журнал не ответил за ${HEALTH_TIMEOUT} с."
+        warn "The journal did not answer within ${HEALTH_TIMEOUT} s."
         compose ps || true
         compose logs --tail=60 "$SERVICE" || true
-        die "Журнал не поднялся за ${HEALTH_TIMEOUT} с.
-  Логи: docker compose logs $SERVICE
-  Если сборка долго скачивает образы — запустите снова, прогресс сохраняется.
-  Другой таймаут: HEALTH_TIMEOUT=900 bash install.sh"
+        die "The journal did not come up within ${HEALTH_TIMEOUT} s.
+  Logs: docker compose logs $SERVICE
+  If the build is still downloading images — run it again, the progress is kept.
+  Another timeout: HEALTH_TIMEOUT=900 bash install.sh"
     fi
 
     printf '.'
     sleep "$HEALTH_INTERVAL"
 done
 printf '\n'
-ok "Журнал отвечает, самопроверка без ошибок."
+ok "The journal is answering, the self-check is clean."
 
-# --- 6. Итог -----------------------------------------------------------------
+# --- 6. Summary ---------------------------------------------------------------
 
 port=$(env_value WEB_PORT)
 case "$port" in
@@ -668,41 +673,41 @@ url="http://localhost:$port"
 
 line='=============================================================================='
 printf '\n%s%s%s\n' "$BOLD" "$line" "$RESET"
-printf '%s  ЖУРНАЛ ЗАПУЩЕН%s\n' "$BOLD" "$RESET"
+printf '%s  ELECTRONIC ATTENDANCE JOURNAL IS RUNNING%s\n' "$BOLD" "$RESET"
 printf '%s%s%s\n' "$BOLD" "$line" "$RESET"
 
 cat <<TEXT
 
-  Адрес:            $url
-  Админка Django:   $url/admin/
-  Демо-страница:    $url/demo/   (появляется при DEMO_MODE=1)
+  Address:          $url
+  Django admin:     $url/admin/
+  Demo page:        $url/demo/   (appears with DEMO_MODE=1)
 
-  ПЕРВОЕ ОТКРЫТИЕ — МАСТЕР НАСТРОЙКИ
-  Откройте адрес в браузере: журнал сам покажет страницу первичной настройки
-  (/setup/). Там создаётся главный администратор: логин, имя и пароль, название
-  журнала и, по желанию, логотип. После этого мастер больше не появляется,
-  а вход выполняется по созданному логину на странице $url/login/.
+  FIRST OPENING — SETUP WIZARD
+  Open the address in a browser: the journal will show the initial setup page
+  (/setup/). There the main administrator is created: login, name and password,
+  the journal name and, optionally, a logo. After that the wizard does not
+  appear again, and you sign in with the created login at $url/login/.
 
-  ДЕМО-РЕЖИМ (вход без пароля, отдельная демонстрационная база)
-  1. В файле .env поставьте DEMO_MODE=1
-  2. Перезапустите: bash install.sh   (или: docker compose up -d)
-  3. Откройте $url/demo/ и нажмите «Войти как методист»
-     или «Войти как преподаватель».
-  Демо-данные лежат в отдельной базе и рабочий журнал не затрагивают.
-  Перед реальной работой верните DEMO_MODE=0.
+  DEMO MODE (sign-in without a password, separate demo database)
+  1. In the .env file set DEMO_MODE=1
+  2. Restart: bash install.sh   (or: docker compose up -d)
+  3. Open $url/demo/ and click "Sign in as a methodologist"
+     or "Sign in as a teacher".
+  Demo data lives in a separate database and does not affect the working journal.
+  Before real work set DEMO_MODE=0 back.
 
-  ДАННЫЕ И РЕЗЕРВНЫЕ КОПИИ
-  База и загруженные файлы лежат в томах postgres_data и media_data и
-  сохраняются при обновлении и остановке. Копия всех данных — раздел
-  «Резервная копия» в журнале (только для администратора).
+  DATA AND BACKUPS
+  The database and the uploaded files live in the postgres_data and media_data
+  volumes and are kept through updates and shutdowns. A copy of all data is the
+  "Backup" section in the journal (administrator only).
 
-  ПОЛЕЗНЫЕ КОМАНДЫ (в каталоге проекта)
-    docker compose logs -f $SERVICE          — смотреть логи
-    docker compose ps                   — состояние контейнеров
-    docker compose down                 — остановить (данные сохраняются)
-    docker compose up -d --build        — запустить после замены файлов
+  USEFUL COMMANDS (in the project directory)
+    docker compose logs -f $SERVICE      — follow the logs
+    docker compose ps                    — container status
+    docker compose down                  — stop (data is kept)
+    docker compose up -d --build         — start after replacing files
 
-  Настройки — в файле .env, подробности — в README.md
-  и docs/admin-guide.md.
+  Settings are in the .env file, details are in README.md
+  and docs/admin-guide.md.
 
 TEXT

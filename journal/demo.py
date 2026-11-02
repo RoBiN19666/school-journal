@@ -463,6 +463,8 @@ def demo_database_counts():
         return None
     counts = {}
     for label, queryset in (
+        ("Адреса", Branch.objects.using(alias)),
+        ("Кабинеты", Room.objects.using(alias)),
         ("Ученики", Student.objects.using(alias)),
         ("Программы", Subject.objects.using(alias)),
         ("Группы", Group.objects.using(alias)),
@@ -482,8 +484,36 @@ def demo_database_counts():
     return counts
 
 
+def _busy_branch_ids(alias):
+    """Адреса демо-базы, за которыми остались данные: их удалять нельзя."""
+    busy = set(Subject.objects.using(alias).values_list("branch_id", flat=True))
+    busy |= set(Schedule.objects.using(alias).values_list("branch_id", flat=True))
+    busy |= set(Room.objects.using(alias).values_list("branch_id", flat=True))
+    busy.discard(None)
+    return busy
+
+
+def demo_branches_with_data():
+    """Адреса демо-базы, которые остались из-за связанных данных (не удаляем их)."""
+    alias = demo_router.DEMO_ALIAS
+    busy = _busy_branch_ids(alias)
+    if not busy:
+        return []
+    return list(
+        Branch.objects.using(alias)
+        .filter(pk__in=busy)
+        .values_list("name", flat=True)
+    )
+
+
 def wipe_demo_data():
-    """Полностью очищает демонстрационную базу (рабочая не затрагивается)."""
+    """Полностью очищает демонстрационную базу (рабочая не затрагивается).
+
+    Вместе с данными убираются кабинеты и адреса демо-базы: иначе при повторной
+    сборке демо-набора они копились бы от версии к версии. Адрес, за которым
+    остались кабинеты, программы или занятия, не трогаем — каскад снёс бы их
+    вместе с ним; такие адреса возвращает ``demo_branches_with_data``.
+    """
     alias = demo_router.DEMO_ALIAS
     removed = {}
     with demo_router.activate():
@@ -503,6 +533,17 @@ def wipe_demo_data():
         users = User.objects.using(alias).filter(username__in=DEMO_USERNAMES)
         removed["Пользователи"] = users.count()
         users.delete()
+
+        # Кабинеты без занятий висели бы после очистки: занятий уже нет,
+        # поэтому убираем их до адресов, иначе ни один адрес не станет «пустым».
+        rooms = Room.objects.using(alias).filter(schedules__isnull=True)
+        removed["Кабинеты"] = rooms.count()
+        rooms.delete()
+
+        busy = _busy_branch_ids(alias)
+        branches = Branch.objects.using(alias).exclude(pk__in=busy)
+        removed["Адреса"] = branches.count()
+        branches.delete()
     return removed
 
 
@@ -606,7 +647,6 @@ def ensure_demo_data(term=None):
         # Полугодие берём именно из демонстрационной базы: объекты рабочей базы
         # к её записям не подходят (маршрутизатор запрещает такие связи).
         periods_tools.ensure_periods()
-        periods_tools.seed_branches()
         if term is None:
             _, term = periods_tools.resolve_period()
         rebuilt = False
@@ -615,6 +655,9 @@ def ensure_demo_data(term=None):
             # данные двух версий демо-режима.
             _rebuild_demo_data(term)
             rebuilt = True
+        # Стандартные адреса журнала досоздаём после пересборки: она убирает
+        # адреса демо-базы, в том числе совпадающие со стандартными.
+        periods_tools.seed_branches()
         # Время, адрес и кабинет приводим к демо-расписанию: у старых наборов их могло не быть.
         _apply_demo_schedule(term)
         # И снимаем старую связку «подмена = занятость не учитывается».

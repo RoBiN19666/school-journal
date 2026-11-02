@@ -8,13 +8,9 @@ class Command(BaseCommand):
     help = "Удаляет демонстрационные данные. Рабочий журнал не затрагивает."
 
     def handle(self, *args, **options):
-        counts = demo.demo_database_counts()
-        if counts is None:
+        if not demo.demo_database_ready():
             self.stdout.write("Демонстрационная база недоступна или пуста.")
             return
-        self.stdout.write("Демонстрационная база:")
-        for label, value in counts.items():
-            self.stdout.write(f"  {label}: {value}")
         removed = demo.wipe_demo_data()
         self.stdout.write(
             self.style.SUCCESS(
@@ -22,3 +18,10 @@ class Command(BaseCommand):
                 + ", ".join(f"{label} — {count}" for label, count in removed.items() if count)
             )
         )
+        left = demo.demo_branches_with_data()
+        if left:
+            self.stdout.write(
+                self.style.WARNING(
+                    "Не тронуты адреса со связанными данными: " + ", ".join(left)
+                )
+            )
