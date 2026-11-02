@@ -1,5 +1,5 @@
 {% extends "journal/base.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}{{ title }} · {% trans "Электронный журнал" %}{% endblock %}
 
@@ -48,10 +48,14 @@
         <div class="mt-4 flex flex-wrap items-center gap-4">
             <div>
                 <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">{% trans "Логотип" %}</p>
-                <div data-logo-preview-frame class="h-16 w-16 overflow-hidden rounded-2xl{% if not form.instance.logo %} bg-indigo-600{% endif %}">
+                {# Тот же знак, что в шапке: сначала свой логотип, затем знак проекта, и только в крайнем случае «ЭЖ». #}
+                <div data-logo-preview-frame class="h-16 w-16 overflow-hidden rounded-2xl{% if not form.instance.logo and not default_logo_available %} bg-indigo-600{% endif %}">
                     {% if form.instance.logo %}
                         <img data-logo-preview src="{{ form.instance.logo.url }}" alt="{% trans "Логотип" %}"
-                             class="h-full w-full rounded-2xl object-cover">
+                             class="block h-full w-full rounded-2xl object-contain bg-white p-0.5">
+                    {% elif default_logo_available %}
+                        <img data-logo-preview src="{% static 'journal/logo-square.png' %}" alt="{% trans "Логотип по умолчанию" %}"
+                             class="block h-full w-full rounded-2xl object-cover bg-white p-0.5">
                     {% else %}
                         <span class="grid h-full w-full place-items-center text-lg font-semibold text-white">
                             {% trans "ЭЖ" as short_logo_default %}{{ form.instance.short_logo|default:short_logo_default }}
@@ -61,12 +65,18 @@
             </div>
             <div>
                 <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">{% trans "Фавикон" %}</p>
-                {% if form.instance.favicon %}
-                    <img src="{{ form.instance.favicon.url }}" alt="{% trans "Фавикон" %}"
-                         class="h-10 w-10 rounded-lg border border-slate-200 object-contain p-1">
-                {% else %}
-                    <p class="text-sm text-slate-500">{% trans "по умолчанию" %}</p>
-                {% endif %}
+                <div class="flex items-center gap-2" data-favicon-preview>
+                    {% if form.instance.favicon %}
+                        <img src="{{ form.instance.favicon.url }}" alt="{% trans "Фавикон" %}"
+                             class="h-10 w-10 rounded-lg border border-slate-200 object-contain p-1">
+                    {% elif default_favicon_available %}
+                        <img src="{% static 'journal/favicon.png' %}" alt="{% trans "Фавикон по умолчанию" %}"
+                             class="h-10 w-10 rounded-lg border border-slate-200 object-contain p-1">
+                        <span class="text-xs text-slate-400">{% trans "по умолчанию" %}</span>
+                    {% else %}
+                        <span class="text-sm text-slate-500">{% trans "по умолчанию" %}</span>
+                    {% endif %}
+                </div>
             </div>
         </div>
         <dl class="mt-6 space-y-2 text-sm">

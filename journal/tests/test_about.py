@@ -5,6 +5,8 @@
 отдельный адрес, пустое значение не принимается, а обычный администратор,
 методист и аноним изменить название не могут — даже отправив POST напрямую.
 """
+from unittest import mock
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -35,6 +37,11 @@ class OrganizationNameTestCase(TestCase):
         self.superadmin = make_user("about-owner", User.Role.SUPERADMIN, superuser=True)
         self.admin = make_user("about-admin", User.Role.ADMIN)
         self.methodist = make_user("about-methodist", User.Role.METHODIST)
+        # Проверка обновлений не должна ходить в GitHub из тестов: подменяем
+        # результат на «узнать не удалось», содержимое страницы это не ломает.
+        patcher = mock.patch("journal.updates.latest_release", return_value=None)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def saved_name(self):
         site = SiteSettings.objects.filter(pk=1).first()

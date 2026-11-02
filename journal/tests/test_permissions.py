@@ -34,7 +34,7 @@ PASSWORD = "TestPass-2024-for-tests"
 STAFF_ONLY_PATHS = ("/students/", "/staff/", "/backup/", "/security/", "/customization/")
 
 #: Страницы, закрытые даже для обычного администратора.
-SUPERADMIN_ONLY_PATHS = ("/customization/",)
+SUPERADMIN_ONLY_PATHS = ("/customization/", "/backup/")
 
 #: Коды, которыми представления отказывают в доступе: ``RoleRequiredMixin``
 #: возвращает 302 на домашнюю страницу, остальные — 403/404.
@@ -171,10 +171,10 @@ class StaffSectionAccessTests(TestCase):
             )
 
     def test_admin_allowed_and_denied_sections(self):
-        """Администратор открывает /staff/, /backup/, /security/, но НЕ /customization/."""
+        """Администратор открывает /staff/, /security/, но НЕ /backup/, /customization/."""
         make_user("admin-two", User.Role.ADMIN)
         self.client.force_login(User.objects.get(username="admin-two"))
-        allowed = ("/staff/", "/backup/", "/security/")
+        allowed = ("/staff/", "/security/")
         denied = SUPERADMIN_ONLY_PATHS
         with self.subTest(role="admin", kind="allowed"):
             self.assertEqual(
@@ -191,12 +191,14 @@ class StaffSectionAccessTests(TestCase):
                 [],
             )
 
-    def test_superadmin_allowed_customization(self):
-        """Главный администратор открывает /customization/."""
+    def test_superadmin_allowed_customization_and_backup(self):
+        """Главный администратор открывает /customization/ и раздел /backup/."""
         make_user("root-admin", User.Role.SUPERADMIN, is_superuser=True)
         self.client.force_login(User.objects.get(username="root-admin"))
-        response = self.client.get("/customization/")
-        self.assertEqual(response.status_code, 200)
+        for path in ("/customization/", "/backup/"):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
 
 
 class TeacherIsolationTests(TestCase):

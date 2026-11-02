@@ -168,7 +168,7 @@ urlpatterns = [
         name="export_development",
     ),
     path("export/users.xlsx", views.ExportUsersView.as_view(), name="export_users"),
-    # Резервная копия (только администратор)
+    # Резервная копия (только главный администратор)
     path("backup/", views.BackupIndexView.as_view(), name="backup"),
     path(
         "backup/download/",
