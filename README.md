@@ -9,6 +9,9 @@
 
 # Electronic attendance journal
 
+[![Release](https://img.shields.io/github/v/release/RoBiN19666/school-journal?style=flat-square&label=release)](https://github.com/RoBiN19666/school-journal/releases)
+[![License](https://img.shields.io/github/license/RoBiN19666/school-journal?style=flat-square&label=license)](https://github.com/RoBiN19666/school-journal/blob/main/LICENSE)
+
 A web attendance journal for an educational organisation: students, programmes, groups
 with their membership, the schedule by branch and term, attendance marks, class topics
 with academic hours, exports to Excel and as an image, backups.
@@ -25,11 +28,10 @@ grades — attendance only: `P` — present, `A` — absent, `L` — late.
 
 <table align="center">
   <tr>
-    <td align="center"><img src="docs/screenshots/schedule-en.png" width="400" alt="Schedule"><br><sub><b>Schedule</b> · the week grid</sub></td>
-    <td align="center"><img src="docs/screenshots/weeks-en.png" width="400" alt="Attendance"><br><sub><b>Attendance</b> · the weekly marks table</sub></td>
+    <td align="center"><img src="docs/screenshots/schedule-en.png?v=2" width="400" alt="Schedule"><br><sub><b>Schedule</b> · the week grid</sub></td>
+    <td align="center"><img src="docs/screenshots/weeks-en.png?v=2" width="400" alt="Attendance"><br><sub><b>Attendance</b> · the weekly marks table</sub></td>
   </tr>
 </table>
-
 
 ## Features
 
@@ -45,8 +47,8 @@ grades — attendance only: `P` — present, `A` — absent, `L` — late.
   (1 academic hour = 45 minutes).
 * **Exports:** Excel (attendance, topics, schedule, competitions, courses) and the schedule as a
   PNG image in portrait or landscape orientation.
-* **Roles:** chief administrator, administrator, methodist (teaching and methodology support
-  staff), teacher.
+* **Roles:** chief administrator, administrator, methodologist (teaching and methodology
+  support staff), teacher.
 * **Security:** a log of sign-ins and events, allow and deny lists of IP addresses, protection
   against password guessing, automatic blocking of scanners, HTTPS settings.
 * **Appearance:** several themes, your own logo and favicon, the name of the organisation.
@@ -84,8 +86,9 @@ The script does everything itself:
    and `ALLOWED_HOSTS=localhost,127.0.0.1`;
 3. builds and starts the `db` and `web` containers (`docker compose up -d --build`);
 4. waits until it is ready: polls `python manage.py healthcheck` inside the container
-   (up to 5 minutes) and shows the logs if the journal did not come up;
-5. prints the journal address and what to do on the first opening.
+   (up to 5 minutes, until it reports 11 checks and 0 errors) and shows the logs if the
+   journal did not come up;
+5. prints the journal address and what to do on the first launch.
 
 After installation the journal opens at **http://localhost:8000**.
 The port can be changed in `.env`: `WEB_PORT=8080` → `http://localhost:8080`.
@@ -108,7 +111,7 @@ bash install.sh --no-prompt        # no questions: instructions only
 cp .env.example .env
 # open .env and fill in SECRET_KEY and POSTGRES_PASSWORD
 docker compose up -d --build
-docker compose exec -T web python manage.py healthcheck   # wait until it reports 0 errors
+docker compose exec -T web python manage.py healthcheck   # wait until it reports 11 checks, 0 errors
 ```
 
 `SECRET_KEY` is a random string of at least 50 characters, `POSTGRES_PASSWORD` is the
@@ -125,28 +128,18 @@ The journal runs in containers, so it will not start without Docker. On launch
 `install.sh` checks `docker` and `docker compose` and, if something is missing, explains
 the situation and offers a solution.
 
-### Linux
-
-The script reads `/etc/os-release`, shows what it detected and asks:
-
-```
-System: Ubuntu 24.04.1 LTS (ubuntu, noble 24.04)
-Installing Docker with the official get.docker.com script.
-
-Install Docker now? [y/N]
-```
-
-* **The default answer is no.** Enter or `n` cancels the installation: the script prints
-  the commands for a manual installation and exits with code 1, changing nothing on the machine.
-* **The answer `y`** (or `yes`) — the script downloads the official `get.docker.com`
-  installer, runs it (through `sudo` if you are not root), then runs
-  `sudo usermod -aG docker "$USER"`. Every command it executes is printed, and the output
-  of the installer is visible in full. At the end there is an honest warning: you have to
-  **log in again** or run `newgrp docker` (otherwise `docker` will not let you in without
-  `sudo`), and then run `bash install.sh` again.
-* **No terminal** (run from a script, CI, cron) — the question is not asked: instructions
-  straight away and exit code 1. For an automatic installation there is the flag
-  `--install-docker`, and `--no-prompt` disables any questions and leaves only the instructions.
+**Linux.** The script reads `/etc/os-release`, shows what it detected and asks
+`Install Docker now? [y/N]`. The default answer is **no**: Enter or `n` cancels the
+installation, prints the commands for a manual installation and exits with code 1,
+changing nothing on the machine. The answer **`y`** downloads the official
+`get.docker.com` installer, runs it (through `sudo` if you are not root) and then
+`sudo usermod -aG docker "$USER"`; every command and its full output are printed. At
+the end there is an honest warning: you have to **log in again** or run
+`newgrp docker` (otherwise `docker` will not let you in without `sudo`), then run
+`bash install.sh` again. With **no terminal** (a script, CI, cron) the question is not
+asked: instructions straight away and exit code 1. For unattended installations there
+are the flags `--install-docker` (agree without asking) and `--no-prompt` (no questions,
+instructions only).
 
 **Which systems the installer sets up automatically** (according to `/etc/os-release`):
 
@@ -156,42 +149,24 @@ Install Docker now? [y/N]
 | Ubuntu derivatives: Linux Mint, Pop!_OS and similar (`ID_LIKE=ubuntu`) | yes, if the base is 22.04 or 24.04 |
 | Debian 11, 12 | yes |
 | Fedora, RHEL, AlmaLinux, Rocky Linux 9 and newer | yes |
-| Arch Linux, openSUSE, Alpine and others | no: the script does not install Docker, it shows the command for your package manager and a link to the official instructions, exit code 1 |
+| Arch Linux, openSUSE, Alpine and others | no: the script shows the command for your package manager and a link to the official instructions, exit code 1 |
 | An unknown distribution or an empty version | no, for the same reason |
 
 Checking the version is mandatory: installing Docker “at random” on an unfamiliar system
 is risky, so it is better to show the person the exact command.
 
-### macOS and Windows
-
-Docker Desktop here is installed **by hand only**: it is a large application with a
-graphical setup wizard, it has to be started after installation (and sometimes the system
-has to be rebooted), and the Docker Desktop licence for large organisations is paid.
-The decision to install must stay with a human, so `install.sh` and `install.ps1` download
-and install nothing, ask no questions and offer no installation flags — they only show
-what is missing and give the links:
+**macOS and Windows.** Docker Desktop here is installed **manually only**: it is a large
+application with a graphical setup wizard, it has to be started after installation (and
+sometimes the system has to be rebooted), and the Docker Desktop licence for large
+organisations is paid. The decision to install stays with a human, so `install.sh` and
+`install.ps1` download and install nothing, ask no questions and offer no installation
+flags — they only show what is missing and give the link:
 
 * Docker Desktop: <https://www.docker.com/products/docker-desktop/>
-* installing on macOS: <https://docs.docker.com/desktop/install/mac-install/>
-* installing on Windows: <https://docs.docker.com/desktop/install/windows-install/>
 
 After installation start Docker Desktop, wait for “Engine running” and run the journal
-installation again.
-
-### Other distributions manually
-
-```bash
-# Debian/Ubuntu
-sudo apt-get install -y docker.io docker-compose-plugin
-
-# Fedora/RHEL
-sudo dnf install -y docker docker-compose-plugin
-
-# Arch
-sudo pacman -S docker docker-compose
-```
-
-Official instructions: <https://docs.docker.com/engine/install/>
+installation again. Manual installation commands for other distributions:
+<https://docs.docker.com/engine/install/>
 
 ### If Docker is already there
 
@@ -215,8 +190,9 @@ wizard by itself — `/setup/`.
 
 The wizard appears once. After that you sign in on the page `http://localhost:8000/login/`.
 The other staff members are created inside the journal: **“Teachers”** (the role
-“Teacher”) and **“Teaching and methodology support staff”** (methodist or administrator).
-The password is shown once when the account is created, and it can be generated with a button.
+“Teacher”) and **“Teaching and methodology support staff”** (methodologist or
+administrator). The password is shown once when the account is created, and it can be
+generated with a button.
 
 If an administrator has to be created from the console:
 
@@ -236,12 +212,12 @@ on a separate demo database, and the changes in it are not saved.
 docker compose up -d
 ```
 
-3. Open `http://localhost:8000/demo/` and press **“Sign in as the methodist”** or
+3. Open `http://localhost:8000/demo/` and press **“Sign in as the methodologist”** or
    **“Sign in as the teacher”**.
 
 The demo database already has ready-made data: students, staff, several branches with rooms,
 a filled-in schedule with substitutions and one-off classes, marks for the last month, class
-topics, competitions and courses. The demo session lives until the browser is closed.
+topics, competitions and courses. The demo session lasts until the browser is closed.
 
 Before real work set `DEMO_MODE=0` back and restart the journal.
 More details are in [docs/admin-guide.md](docs/admin-guide.md), section 12.
@@ -262,7 +238,7 @@ More details are in [docs/admin-guide.md](docs/admin-guide.md), section 12.
 | **Competitions** | students taking part in competitions and olympiads |
 | **Professional development** | courses of the teachers |
 | **Export to Excel** | tables and the schedule as a PNG image |
-| **Teaching and methodology support staff** | methodists and administrators (administrator only) |
+| **Teaching and methodology support staff** | methodologists and administrators (administrator only) |
 | **Security** | email and notifications, access by IP, the sign-in log |
 | **Backup** | download and restore the data (chief administrator only) |
 | **Demo mode and demo data** | the state of the demo database and clearing it |
@@ -289,12 +265,12 @@ What matters:
 * the copy includes the **site settings** (organisation and journal names, the sign-in
   hint, the session terms) and the **mail settings** (SMTP server, port, sender,
   recipients and notification switches);
-* the copy does **not** include the logo and the favicon: they live in the `media_data`
-  volume;
+* the copy does **not** include the logo and the favicon: they are stored in the
+  `media_data` volume;
 * the copy does **not** include the **SMTP password** in any form: restoring a copy keeps
   the password already set in the journal;
-* the journal database lives in the `postgres_data` volume and is kept through updates and
-  shutdowns.
+* the journal database is stored in the `postgres_data` volume and is kept through updates
+  and shutdowns.
 
 ## Updating
 
@@ -371,8 +347,8 @@ described in [docs/admin-guide.md](docs/admin-guide.md), section 11.
 ## Documentation
 
 * [docs/admin-guide.md](docs/admin-guide.md) — the administrator guide: installation,
-  first launch, updating, backups, roles, the workflow of the methodist, exports, security
-  and what to do if something went wrong.
+  first launch, updating, backups, roles, the workflow of the methodologist, exports,
+  security and what to do if something went wrong.
 * [docs/NEXT-STEPS.md](docs/NEXT-STEPS.md) — the state of the project and open tasks
   (for the developer).
 * [CHANGELOG.md](CHANGELOG.md) — the version history.
@@ -432,12 +408,12 @@ the new files instead of the cache.
 
 ## Publishing to the internet
 
-The journal can be opened to the outside, but by default it is configured for a local run.
-Before publishing: set `DEBUG=0` (it already is), add your domain to `ALLOWED_HOSTS`,
-enable the HTTPS flags, when working behind nginx — `TRUST_PROXY_HEADERS=1`, if you wish,
-close the admin with a non-standard `ADMIN_URL` and enable blocking of scanning addresses.
-Step by step — [docs/admin-guide.md](docs/admin-guide.md), section 11; a ready-made example
-for fail2ban — [docs/fail2ban-journal.conf](docs/fail2ban-journal.conf).
+By default the journal is configured for a local run. Before exposing it to the outside:
+keep `DEBUG=0`, add your domain to `ALLOWED_HOSTS`, enable the HTTPS flags, use
+`TRUST_PROXY_HEADERS=1` behind nginx, and optionally close the admin with a non-standard
+`ADMIN_URL` and enable blocking of scanning addresses. Step by step —
+[docs/admin-guide.md](docs/admin-guide.md), section 11; a ready-made example for fail2ban —
+[docs/fail2ban-journal.conf](docs/fail2ban-journal.conf).
 
 ## Licence
 
@@ -454,4 +430,6 @@ Vorobyov I.V.
 
 ## Built with
 
-Developed with **DeepSeek Harness**.
+Developed in pair with **DeepSeek Harness**, an LLM-based agent: it wrote the Django code,
+templates, migrations and Docker setup from a specification. Requirements, testing on a
+live install, debugging and acceptance — by the author.
