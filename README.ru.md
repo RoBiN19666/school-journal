@@ -9,6 +9,9 @@
 
 # Электронный журнал посещаемости
 
+[![Release](https://img.shields.io/github/v/release/RoBiN19666/school-journal?style=flat-square&label=release)](https://github.com/RoBiN19666/school-journal/releases)
+[![License](https://img.shields.io/github/license/RoBiN19666/school-journal?style=flat-square&label=license)](https://github.com/RoBiN19666/school-journal/blob/main/LICENSE)
+
 Веб-журнал посещаемости для образовательной организации: ученики, программы, группы
 с составом, расписание по адресам и полугодиям, отметки посещаемости, темы занятий
 с академическими часами, выгрузки в Excel и картинкой, резервные копии.
@@ -18,15 +21,15 @@
 `P` — присутствовал, `A` — отсутствовал, `L` — опоздал.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="600" alt="Главная">
+  <img src="docs/screenshots/dashboard.png?v=2" width="600" alt="Главная">
   <br>
   <sub><b>Главная</b> · сводка за полугодие</sub>
 </p>
 
 <table align="center">
   <tr>
-    <td align="center"><img src="docs/screenshots/schedule.png" width="400" alt="Расписание"><br><sub><b>Расписание</b> · сетка по дням</sub></td>
-    <td align="center"><img src="docs/screenshots/weeks.png" width="400" alt="Посещаемость"><br><sub><b>Посещаемость</b> · недельная таблица отметок</sub></td>
+    <td align="center"><img src="docs/screenshots/schedule.png?v=2" width="400" alt="Расписание"><br><sub><b>Расписание</b> · сетка по дням</sub></td>
+    <td align="center"><img src="docs/screenshots/weeks.png?v=2" width="400" alt="Посещаемость"><br><sub><b>Посещаемость</b> · недельная таблица отметок</sub></td>
   </tr>
 </table>
 
@@ -82,7 +85,8 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
    и `ALLOWED_HOSTS=localhost,127.0.0.1`;
 3. собирает и запускает контейнеры `db` и `web` (`docker compose up -d --build`);
 4. ждёт готовности: опрашивает `python manage.py healthcheck` внутри контейнера
-   (до 5 минут) и показывает логи, если журнал не поднялся;
+   (до 5 минут, пока не отрапортует «11 проверок, 0 ошибок») и показывает логи,
+   если журнал не поднялся;
 5. печатает адрес журнала и что делать при первом открытии.
 
 После установки журнал открывается по адресу **http://localhost:8000**.
@@ -106,7 +110,7 @@ bash install.sh --no-prompt        # без вопросов: только ин�
 cp .env.example .env
 # откройте .env и заполните SECRET_KEY и POSTGRES_PASSWORD
 docker compose up -d --build
-docker compose exec -T web python manage.py healthcheck   # ждём «errors: 0»
+docker compose exec -T web python manage.py healthcheck   # ждём «11 проверок, 0 ошибок»
 ```
 
 `SECRET_KEY` — случайная строка не короче 50 символов, `POSTGRES_PASSWORD` — пароль
@@ -123,30 +127,18 @@ openssl rand -hex 24                                                 # POSTGRES_
 `install.sh` проверяет `docker` и `docker compose` и, если чего-то нет, объясняет
 ситуацию и предлагает решение.
 
-### Linux
-
-Скрипт читает `/etc/os-release`, показывает, что определил, и спрашивает
-(вывод установщика — на английском):
-
-```
-System: Ubuntu 24.04.1 LTS (ubuntu, noble 24.04)
-Installing Docker with the official get.docker.com script.
-
-Install Docker now? [y/N]
-```
-
-* **Ответ по умолчанию — нет.** Enter или `n` отменяет установку: скрипт печатает
-  команды для ручной установки и выходит с кодом 1, ничего не меняя на машине.
-* **Ответ `y`** (или `yes`) — скрипт скачивает официальный установщик
-  `get.docker.com`, запускает его (через `sudo`, если вы не root), затем выполняет
-  `sudo usermod -aG docker "$USER"`. Все выполняемые команды печатаются, вывод
-  установщика виден целиком. В конце — честное предупреждение: нужно **перелогиниться**
-  или выполнить `newgrp docker` (иначе `docker` не пустит без `sudo`), после чего
-  запустить `bash install.sh` снова.
-* **Нет терминала** (запуск из скрипта, CI, cron) — вопрос не задаётся: сразу
-  инструкции и код возврата 1. Для автоматической установки есть флаг
-  `--install-docker`, а `--no-prompt` отключает любые вопросы и оставляет только
-  инструкции.
+**Linux.** Скрипт читает `/etc/os-release`, показывает, что определил, и спрашивает
+`Install Docker now? [y/N]` (вывод установщика — на английском). Ответ по умолчанию —
+**нет**: Enter или `n` отменяет установку, печатает команды для ручной установки
+и выходит с кодом 1, ничего не меняя на машине. Ответ **`y`** скачивает официальный
+установщик `get.docker.com`, запускает его (через `sudo`, если вы не root), затем
+выполняет `sudo usermod -aG docker "$USER"`; все команды и их вывод печатаются
+целиком. В конце — честное предупреждение: нужно **перелогиниться** или выполнить
+`newgrp docker` (иначе `docker` не пустит без `sudo`), после чего запустить
+`bash install.sh` снова. Если **терминала нет** (запуск из скрипта, CI, cron) —
+вопрос не задаётся: сразу инструкции и код возврата 1. Для автоматической установки
+есть флаги `--install-docker` (согласие без вопроса) и `--no-prompt` (без вопросов,
+только инструкции).
 
 **Какие системы установщик ставит автоматически** (по данным `/etc/os-release`):
 
@@ -156,42 +148,24 @@ Install Docker now? [y/N]
 | Производные Ubuntu: Linux Mint, Pop!_OS и подобные (`ID_LIKE=ubuntu`) | да, если база — 22.04 или 24.04 |
 | Debian 11, 12 | да |
 | Fedora, RHEL, AlmaLinux, Rocky Linux 9 и новее | да |
-| Arch Linux, openSUSE, Alpine и прочие | нет: скрипт не ставит Docker, а показывает команду для вашего пакетного менеджера и ссылку на официальную инструкцию, код возврата 1 |
+| Arch Linux, openSUSE, Alpine и прочие | нет: скрипт показывает команду для вашего пакетного менеджера и ссылку на официальную инструкцию, код возврата 1 |
 | Неизвестный дистрибутив или пустая версия | нет, по той же причине |
 
 Проверка версии обязательна: ставить Docker «наугад» на незнакомую систему
 рискованно, поэтому лучше показать человеку точную команду.
 
-### macOS и Windows
-
-Docker Desktop здесь устанавливается **только вручную**: это большое приложение
-с графическим мастером настройки, после установки его нужно запустить (а иногда
-и перезагрузить систему), а лицензия Docker Desktop для крупных организаций
-платная. Решение об установке должно остаться за человеком, поэтому `install.sh`
+**macOS и Windows.** Docker Desktop здесь устанавливается **только вручную**:
+это большое приложение с графическим мастером настройки, после установки его нужно
+запустить (а иногда и перезагрузить систему), а лицензия Docker Desktop для крупных
+организаций платная. Решение об установке остаётся за человеком, поэтому `install.sh`
 и `install.ps1` ничего не скачивают и не устанавливают, не задают вопросов и не
-предлагают флагов установки — они только показывают, чего не хватает, и дают ссылки:
+предлагают флагов установки — они только показывают, чего не хватает, и дают ссылку:
 
 * Docker Desktop: <https://www.docker.com/products/docker-desktop/>
-* установка на macOS: <https://docs.docker.com/desktop/install/mac-install/>
-* установка на Windows: <https://docs.docker.com/desktop/install/windows-install/>
 
 После установки запустите Docker Desktop, дождитесь «Engine running» и повторите
-установку журнала.
-
-### Другие дистрибутивы вручную
-
-```bash
-# Debian/Ubuntu
-sudo apt-get install -y docker.io docker-compose-plugin
-
-# Fedora/RHEL
-sudo dnf install -y docker docker-compose-plugin
-
-# Arch
-sudo pacman -S docker docker-compose
-```
-
-Официальные инструкции: <https://docs.docker.com/engine/install/>
+установку журнала. Команды ручной установки для других дистрибутивов:
+<https://docs.docker.com/engine/install/>
 
 ### Если Docker уже есть
 
@@ -240,7 +214,7 @@ docker compose up -d
 
 В демо-базе уже есть готовые данные: ученики, сотрудники, несколько адресов
 с кабинетами, заполненное расписание с подменами и разовыми занятиями, отметки
-за последний месяц, темы занятий, конкурсы и курсы. Сессия демонстрации живёт
+за последний месяц, темы занятий, конкурсы и курсы. Сессия демонстрации длится
 до закрытия браузера.
 
 Перед реальной работой верните `DEMO_MODE=0` и перезапустите журнал.
@@ -429,12 +403,12 @@ docker compose exec web python manage.py healthcheck
 
 ## Публикация в интернет
 
-Журнал можно открыть наружу, но по умолчанию он настроен на локальный запуск.
-Перед публикацией: поставьте `DEBUG=0` (это уже так), добавьте свой домен в
-`ALLOWED_HOSTS`, включите HTTPS-флаги, при работе за nginx — `TRUST_PROXY_HEADERS=1`,
-при желании закройте админку нестандартным `ADMIN_URL` и включите блокировку
-сканирующих адресов. Пошагово — [docs/admin-guide.md](docs/admin-guide.md), раздел 11;
-готовый пример для fail2ban — [docs/fail2ban-journal.conf](docs/fail2ban-journal.conf).
+По умолчанию журнал настроен на локальный запуск. Перед публикацией наружу: оставьте
+`DEBUG=0`, добавьте свой домен в `ALLOWED_HOSTS`, включите HTTPS-флаги, при работе
+за nginx — `TRUST_PROXY_HEADERS=1`, при желании закройте админку нестандартным
+`ADMIN_URL` и включите блокировку сканирующих адресов. Пошагово —
+[docs/admin-guide.md](docs/admin-guide.md), раздел 11; готовый пример для fail2ban —
+[docs/fail2ban-journal.conf](docs/fail2ban-journal.conf).
 
 ## Лицензия
 
@@ -451,4 +425,6 @@ Copyright (c) 2026 Воробьев И.В.
 
 ## Как разработан
 
-Разработан с использованием **DeepSeek Harness**.
+Разработан в паре с **DeepSeek Harness** — LLM-агентом: он написал код Django,
+шаблоны, миграции и обвязку Docker по техническому заданию. Постановка задач,
+тесты на живой установке, отладка и приёмка — за автором.
